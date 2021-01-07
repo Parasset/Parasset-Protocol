@@ -4,9 +4,7 @@ import "./lib/SafeMath.sol";
 
 contract ParassetController {
 	using SafeMath for uint256;
-	// 管理员地址
 	address public governance;
-	// 抵押资产合约
 	address public mortgagePool;
 
 	constructor () public {
@@ -21,7 +19,6 @@ contract ParassetController {
         _;
     }
 
-	//  开通P资产
     function createParasset(address token) public {
         
     }
