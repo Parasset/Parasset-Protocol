@@ -1,54 +1,37 @@
-pragma solidity 0.6.12;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity ^0.6.12;
 
-import "./Iface/IShare.sol";
 import "./lib/SafeMath.sol";
-import "./Iface/IMortgagepool.sol";
+import "./iface/IParasset.sol";
 
-contract Share is IShare {
-	using SafeMath for uint256;
+contract PToken is IParasset {
+    using SafeMath for uint256;
 
-	mapping (address => uint256) private _balances;
+    mapping (address => uint256) private _balances;
     mapping (address => mapping (address => uint256)) private _allowed;
     uint256 public _totalSupply = 0;                                        
     string public name = "";
     string public symbol = "";
     uint8 public decimals = 18;
 
-    address public C_MortgagePool;
-    address public governance;
+    address public mortgagePool;
 
     event Destroy(uint256 amount, address account);
     event Issuance(uint256 amount, address account);
 
-    constructor (string memory _name, string memory _symbol) public {
+    constructor (string memory _name, 
+                 string memory _symbol) public {
     	name = _name;                                                               
     	symbol = _symbol;
-    	governance = IMortgagepool(address(msg.sender)).getGovernance();
-    	C_MortgagePool = address(msg.sender);
+    	mortgagePool = address(msg.sender);
     }
 
     //---------modifier---------
 
-    modifier onlyGovernance() 
-    {
-        require(msg.sender == governance, "Log:Share:!gov");
-        _;
-    }
-
     modifier onlyMortgagePool()
     {
-    	require(msg.sender == C_MortgagePool, "Log:Share:!mortgagePool");
+    	require(msg.sender == mortgagePool, "Log:PToken:!mortgagePool");
     	_;
-    }
-
-    //---------governance---------
-
-    function setMortgagePool(address _mortgagePool) external onlyGovernance {
-    	C_MortgagePool = _mortgagePool;
-    }
-
-    function setGovernance(address _governance) external onlyGovernance {
-    	governance = _governance;
     }
 
     //---------view---------
@@ -120,7 +103,7 @@ contract Share is IShare {
     }
 
     function destroy(uint256 amount, address account) override external onlyMortgagePool{
-    	require(_balances[account] >= amount, "Log:Share:!destroy");
+    	require(_balances[account] >= amount, "Log:PToken:!destroy");
     	_balances[account] = _balances[account].sub(amount);
     	_totalSupply = _totalSupply.sub(amount);
     	emit Destroy(amount, account);

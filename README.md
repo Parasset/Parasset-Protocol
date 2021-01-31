@@ -1,16 +1,20 @@
-### Hi there 👋
+## 安装
 
-<!--
-**Parasset/Parasset** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+```
+1. npm init
+2. npm install --save-dev hardhat
+3. npx hardhat
+```
 
-Here are some ideas to get you started:
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+## 编译合约
+
+```
+npx hardhat compile
+```
+
+## 运行
+
+```
+npx hardhat run scripts/xxx.js
+```

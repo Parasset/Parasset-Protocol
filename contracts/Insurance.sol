@@ -1,10 +1,10 @@
-pragma solidity 0.6.12;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity ^0.6.12;
 
-import "./Iface/IParasset.sol";
+import "./iface/IInsurance.sol";
 import "./lib/SafeMath.sol";
-import "./Iface/IMortgagepool.sol";
 
-contract Parasset is IParasset {
+contract Insurance is IInsurance {
 	using SafeMath for uint256;
 
 	mapping (address => uint256) private _balances;
@@ -14,41 +14,24 @@ contract Parasset is IParasset {
     string public symbol = "";
     uint8 public decimals = 18;
 
-    address public C_MortgagePool;
-    address public governance;
+    address public mortgagePool;
 
     event Destroy(uint256 amount, address account);
     event Issuance(uint256 amount, address account);
 
-    constructor (string memory _name, string memory _symbol) public {
+    constructor (string memory _name, 
+                 string memory _symbol) public {
     	name = _name;                                                               
-    	symbol = _symbol;
-    	governance = IMortgagepool(address(msg.sender)).getGovernance();
-    	C_MortgagePool = address(msg.sender);
+        symbol = _symbol;
+        mortgagePool = address(msg.sender);
     }
 
     //---------modifier---------
 
-    modifier onlyGovernance() 
-    {
-        require(msg.sender == governance, "Log:Parasset:!gov");
-        _;
-    }
-
     modifier onlyMortgagePool()
     {
-    	require(msg.sender == C_MortgagePool, "Log:Parasset:!mortgagePool");
+    	require(msg.sender == mortgagePool, "Log:Insurance:!mortgagePool");
     	_;
-    }
-
-    //---------governance---------
-
-    function setMortgagePool(address _mortgagePool) external onlyGovernance {
-    	C_MortgagePool = _mortgagePool;
-    }
-
-    function setGovernance(address _governance) external onlyGovernance {
-    	governance = _governance;
     }
 
     //---------view---------
@@ -120,7 +103,7 @@ contract Parasset is IParasset {
     }
 
     function destroy(uint256 amount, address account) override external onlyMortgagePool{
-    	require(_balances[account] >= amount, "Log:Parasset:!destroy");
+    	require(_balances[account] >= amount, "Log:Insurance:!destroy");
     	_balances[account] = _balances[account].sub(amount);
     	_totalSupply = _totalSupply.sub(amount);
     	emit Destroy(amount, account);
