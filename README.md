@@ -18,7 +18,7 @@ npx hardhat compile
 ## 运行
 
 ```
-npx hardhat run scripts/xxx.js
+npx hardhat run scripts/deploy-script.js
 ```
 
 
