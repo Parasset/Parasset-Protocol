@@ -437,7 +437,7 @@ contract MortgagePool {
     	} else {
     		require(msg.value == amount.add(fee), "Log:MortgagePool:!msg.value");
     	}
-    	uint256 pToken = underlyingToPToken[token];
+    	address pToken = underlyingToPToken[token];
     	ERC20(pToken).safeTransfer(address(msg.sender), getDecimalConversion(token, amount, pToken));
     }
 
@@ -555,6 +555,4 @@ contract MortgagePool {
     	return (uint256(1 ether), uint256(1000000));
 
     }
-
-
 }
