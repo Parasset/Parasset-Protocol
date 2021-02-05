@@ -48,6 +48,9 @@ contract MortgagePool {
         uint256 blockHeight;            // 上次操作区块高度
     }
 
+    // p资产地址和保险池地址
+    event createLog(address pTokenAddress, address insuranceToken);
+
 	constructor () public {
         governance = msg.sender;
     }
@@ -123,9 +126,9 @@ contract MortgagePool {
     function getPriceFee(address mortgageToken, 
     	                 address underlyingToken) public view returns(uint256) {
     	if (mortgageToken == address(0x0) || underlyingToken == address(0x0)) {
-    		return 0.02 ether;
+    		return 0.01 ether;
     	}
-    	return 0.01 ether;
+    	return 0.02 ether;
     }
     
     // 小数转换
@@ -135,9 +138,34 @@ contract MortgagePool {
     function getDecimalConversion(address inputToken, 
     	                          uint256 inputTokenAmount, 
     	                          address outputToken) public view returns(uint256) {
-    	return inputTokenAmount.mul(10^IERC20(outputToken).decimals()).div(10^IERC20(inputToken).decimals());
+    	uint256 inputTokenDec = 18;
+    	uint256 outputTokenDec = 18;
+    	if (inputToken != address(0x0)) {
+    		inputTokenDec = IERC20(inputToken).decimals();
+    	}
+
+    	if (outputToken != address(0x0)) {
+    		outputTokenDec = IERC20(outputToken).decimals();
+    	}
+    	return inputTokenAmount.mul(10^outputTokenDec).div(10^inputTokenDec);
     }
 
+    // 查看p资产地址和标的资产地址
+    function getPTokenAddressAndInsAddress(address underlyingToken) 
+    	public view returns(address pTokenAddress, 
+    						address insAddress) {
+    	return (underlyingToPToken[underlyingToken], pTokenToIns[underlyingToPToken[underlyingToken]]);
+    }
+
+    // 查看债仓数据
+    function getLedger(address pToken, 
+    	               address mortgageToken) 
+    	public view returns(uint256 mortgageAssets, 
+    		                uint256 parassetAssets, 
+    		                uint256 blockHeight) {
+    	PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+    	return (pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight);
+    }
 
     // 查看市场基础利率
     function getR0() public view returns(uint256) {
@@ -219,6 +247,8 @@ contract MortgagePool {
         underlyingToPToken[token] = address(pToken);
         pTokenToUnderlying[address(pToken)] = token;
         pTokenToIns[address(pToken)] = address(ins);
+
+        emit createLog(address(pToken), address(ins));
     }
     
     // 铸币、再铸币
@@ -253,6 +283,7 @@ contract MortgagePool {
     	}
         // 计算铸币资产，增发P资产
         uint256 pTokenAmount = amount.mul(underlyingAmount).mul(rate).div(tokenAmount.mul(100));
+        // uint256 pTokenAmount = getDecimalConversion(pTokenToUnderlying[pToken], uTokenAmount, pToken);
         PToken(pToken).issuance(pTokenAmount, address(msg.sender));
         pLedger.mortgageAssets = pLedger.mortgageAssets.add(amount);
         pLedger.parassetAssets = pLedger.parassetAssets.add(pTokenAmount);
