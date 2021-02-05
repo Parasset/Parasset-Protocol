@@ -147,7 +147,7 @@ contract MortgagePool {
     	if (outputToken != address(0x0)) {
     		outputTokenDec = IERC20(outputToken).decimals();
     	}
-    	return inputTokenAmount.mul(10^outputTokenDec).div(10^inputTokenDec);
+    	return inputTokenAmount.mul(10**outputTokenDec).div(10**inputTokenDec);
     }
 
     // 查看p资产地址和标的资产地址
@@ -282,8 +282,8 @@ contract MortgagePool {
     		require(msg.value == amount.add(priceFee), "Log:MortgagePool:!msg.value");
     	}
         // 计算铸币资产，增发P资产
-        uint256 pTokenAmount = amount.mul(underlyingAmount).mul(rate).div(tokenAmount.mul(100));
-        // uint256 pTokenAmount = getDecimalConversion(pTokenToUnderlying[pToken], uTokenAmount, pToken);
+        uint256 uTokenAmount = amount.mul(underlyingAmount).mul(rate).div(tokenAmount.mul(100));
+        uint256 pTokenAmount = getDecimalConversion(pTokenToUnderlying[pToken], uTokenAmount, pToken);
         PToken(pToken).issuance(pTokenAmount, address(msg.sender));
         pLedger.mortgageAssets = pLedger.mortgageAssets.add(amount);
         pLedger.parassetAssets = pLedger.parassetAssets.add(pTokenAmount);
