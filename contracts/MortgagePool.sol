@@ -30,6 +30,8 @@ contract MortgagePool {
 	mapping(address=>mapping(address=>mapping(address=>PersonalLedger))) ledger;
     // 保险池地址=>负账户资金数量
 	mapping(address=>uint256) insNegative;
+    // 抵押资产=>最高抵押率
+    mapping(address=>uint256) maxRate;
 
 	// 市场基础利率，年化2%
 	uint256 r0 = 0.02 ether;
@@ -37,15 +39,12 @@ contract MortgagePool {
 	uint256 oneYear = 2400000;
 	// k常数
 	uint256 k = 120;
-	// 平仓线
-	uint256 liquidationLine = 90;
-	// 减少抵押线
-	uint256 decreaseLine = 70;
 
 	struct PersonalLedger {
         uint256 mortgageAssets;         // 抵押资产数量
         uint256 parassetAssets;         // P资产
         uint256 blockHeight;            // 上次操作区块高度
+        uint256 rate;                   // 抵押率
     }
 
     // p资产地址和保险池地址
@@ -182,14 +181,14 @@ contract MortgagePool {
     	return k;
     }
 
-    // 查看平仓线
-    function getLiquidationLine() public view returns(uint256) {
-    	return liquidationLine;
+    // 查看最高抵押率
+    function getMaxRate(address token) public view returns(uint256) {
+    	return maxRate[token];
     }
 
-    // 查看减少抵押线
-    function getDecreaseLine() public view returns(uint256) {
-    	return decreaseLine;
+    // 查看清算线
+    function clearingLine(address mortgageToken) public view returns(uint256) {
+        return maxRate[mortgageToken].add(20).mul(1 ether).div(100);
     }
 
     //---------governance----------
@@ -224,14 +223,9 @@ contract MortgagePool {
     	k = num;
     }
 
-    // 设置平仓线
-    function setLiquidationLine(uint256 num) public onlyGovernance {
-    	liquidationLine = num;
-    }
-
-    // 设置减少抵押线
-    function setDecreaseLine(uint256 num) public onlyGovernance {
-    	decreaseLine = num;
+    // 设置最高抵押率
+    function setMaxRate(address token, uint256 num) public onlyGovernance {
+    	maxRate[token] = num;
     }
 
     //---------transaction---------
@@ -346,7 +340,7 @@ contract MortgagePool {
     	pLedger.mortgageAssets = pLedger.mortgageAssets.sub(amount);
     	pLedger.blockHeight = block.number;
     	uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
-    	require(mortgageRate < decreaseLine.mul(1 ether).div(100), "Log:MortgagePool:!decreaseLine");
+    	require(mortgageRate < maxRate[mortgageToken].mul(1 ether).div(100), "Log:MortgagePool:!maxRate");
     	// 转出抵押token
     	if (mortgageToken != address(0x0)) {
     		ERC20(mortgageToken).safeTransfer(address(msg.sender), amount);
@@ -418,7 +412,7 @@ contract MortgagePool {
             fee = getFee(pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight, tokenPrice, pTokenPrice);
     	}
     	uint256 kLine = getKLine(pLedger.parassetAssets.add(fee), pLedger.mortgageAssets, tokenPrice, pTokenPrice);
-    	require(kLine > liquidationLine.mul(1 ether).div(100), "Log:MortgagePool:!kLine");
+    	require(kLine > clearingLine(mortgageToken), "Log:MortgagePool:!kLine");
     	// 转入P资产
     	ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), pTokenAmount);
     	// 消除负账户
@@ -476,9 +470,9 @@ contract MortgagePool {
     // amount:标的资产数量
     function subscribeIns(address token, 
     	                  uint256 amount) public payable {
-    	require(underlyingToPToken[token] != address(0x0), "Log:MortgagePool:!underlyingToPToken");
     	uint256 tokenBalance;
     	address pToken = underlyingToPToken[token];
+        require(pToken != address(0x0), "Log:MortgagePool:!underlyingToPToken");
     	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
     	if (token != address(0x0)) {
     		tokenBalance = ERC20(token).balanceOf(address(this));
@@ -488,10 +482,10 @@ contract MortgagePool {
     	}
     	uint256 allValue = tokenBalance.add(pTokenBalance).sub(insNegative[pTokenToIns[pToken]]);
     	Insurance ins = Insurance(pTokenToIns[pToken]);
-    	uint256 insAmount = amount;
+    	uint256 insAmount = getDecimalConversion(token, amount, pToken);
     	uint256 insTotal = ins.totalSupply();
     	if (insTotal != 0) {
-    		insAmount = amount.mul(insTotal).div(allValue);
+    		insAmount = getDecimalConversion(token, amount, pToken).mul(insTotal).div(allValue);
     	}
     	// 转入标的资产
     	if (token != address(0x0)) {
@@ -516,16 +510,29 @@ contract MortgagePool {
     	} else {
     		tokenBalance = address(this).balance;
     	}
-    	uint256 allValue = tokenBalance.add(pTokenBalance).sub(insNegative[pTokenToIns[pToken]]);
+    	uint256 allValue = tokenBalance.add(getDecimalConversion(pToken, pTokenBalance, token))
+                           .sub(getDecimalConversion(pToken, insNegative[pTokenToIns[pToken]], token));
     	Insurance ins = Insurance(pTokenToIns[pToken]);
     	uint256 insTotal = ins.totalSupply();
     	uint256 underlyingAmount = amount.mul(allValue).div(insTotal);
     	
     	// 转出标的资产
     	if (token != address(0x0)) {
-    		ERC20(token).safeTransferFrom(address(msg.sender), address(this), underlyingAmount);
+            if (tokenBalance >= underlyingAmount) {
+                ERC20(token).safeTransfer(address(msg.sender), underlyingAmount);
+            } else {
+                ERC20(token).safeTransfer(address(msg.sender), tokenBalance);
+                ERC20(pToken).safeTransfer(address(msg.sender), 
+                                           getDecimalConversion(token, underlyingAmount.sub(tokenBalance), pToken));
+            }
     	} else {
-    		payEth(address(msg.sender), underlyingAmount);
+            if (tokenBalance >= underlyingAmount) {
+                payEth(address(msg.sender), underlyingAmount);
+            } else {
+                payEth(address(msg.sender), tokenBalance);
+                ERC20(pToken).safeTransfer(address(msg.sender), 
+                                           underlyingAmount.sub(tokenBalance));
+            }
     	}
     	// 销毁份额
     	ins.destroy(amount, address(msg.sender));
