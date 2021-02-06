@@ -48,20 +48,18 @@ exports.create = async function (mortgagePool ,token, name) {
     console.log(`>>> [CREATE SUCCESS]`);
 }
 
-// 查看抵押token信息
-exports.getTokenInfo = async function (mortgagePool ,token) {
-	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-    const tokensAdd = await pool.getPTokenAddressAndInsAddress(token);
-    console.log(`>>> pTokenAddress=${tokensAdd[0]}`);
-    console.log(`>>> insAddress=${tokensAdd[1]}`);
-    return [tokensAdd[0], tokensAdd[1]]
-}
-
 // 允许抵押
 exports.allow = async function (mortgagePool, PToken, MToken) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const allow = await pool.setMortgageAllow(PToken, MToken, "1");
     console.log(`>>> [ALLOW SUCCESS]`);
+}
+
+// 设置最高抵押
+exports.setMaxRate = async function (mortgagePool, MToken, rate) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const maxRate = await pool.setMaxRate(MToken, rate);
+    console.log(`>>> [setMaxRate SUCCESS]`);
 }
 
 // 抵押铸币
@@ -94,6 +92,39 @@ exports.redemption = async function(mortgagePool, MToken, PToken, MTokenAmount, 
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
 	const supplement = await pool.redemption(MToken, PToken, MTokenAmount, {value:valueNum});
 	console.log(`>>> [redemption SUCCESS], redemption:${MTokenAmount}`);
+}
+
+// 兑换
+exports.exchangePTokenToUnderlying = async function(mortgagePool, PToken, amount) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+	const exchange = await pool.exchangePTokenToUnderlying(PToken, amount);
+	console.log(`>>> [exchange SUCCESS], exchange:${PToken}->${amount}`);
+}
+exports.exchangeUnderlyingToPToken = async function(mortgagePool, token, amount) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+	const exchange = await pool.exchangeUnderlyingToPToken(token, amount);
+	console.log(`>>> [exchange SUCCESS], exchange:${token}->${amount}`);
+}
+
+// 认购保险
+exports.subscribeIns = async function(mortgagePool, token, amount) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+	const subscribe = await pool.subscribeIns(token, amount);
+	console.log(`>>> [subscribeIns SUCCESS], subscribeIns:${token}->${amount}`);
+}
+
+// 赎回保险
+exports.redemptionIns = async function(mortgagePool, token, amount) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+	const redemption = await pool.redemptionIns(token, amount);
+	console.log(`>>> [redemption SUCCESS], redemption:${token}->${amount}`);
+}
+
+// 转账ERC20
+exports.transfer = async function(token, to, value) {
+	const ERC20Contract = await ethers.getContractAt("IERC20", token);
+    const approve = await ERC20Contract.transfer(to, value);
+    console.log(`>>> [transfer]: ${token} transfer ${value} to ${to}`);
 }
 
 // 查看债仓信息
@@ -130,4 +161,13 @@ exports.ERC20Balance = async function (token, add) {
 	const ERC20Contract = await ethers.getContractAt("IERC20", token);
 	const balance = await ERC20Contract.balanceOf(add);
 	console.log(">>>>>> BALANCE =", balance.toString());
+}
+
+// 查看抵押token信息
+exports.getTokenInfo = async function (mortgagePool ,token) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const tokensAdd = await pool.getPTokenAddressAndInsAddress(token);
+    console.log(`>>> pTokenAddress=${tokensAdd[0]}`);
+    console.log(`>>> insAddress=${tokensAdd[1]}`);
+    return [tokensAdd[0], tokensAdd[1]]
 }
