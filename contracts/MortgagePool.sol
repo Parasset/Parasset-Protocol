@@ -32,6 +32,8 @@ contract MortgagePool {
 	mapping(address=>uint256) insNegative;
     // 抵押资产=>最高抵押率
     mapping(address=>uint256) maxRate;
+    // 价格和与
+    INestQuery quary;
 
 	// 市场基础利率，年化2%
 	uint256 r0 = 0.02 ether;
@@ -121,9 +123,9 @@ contract MortgagePool {
     function getPriceFee(address mortgageToken, 
     	                 address underlyingToken) public view returns(uint256) {
     	if (mortgageToken == address(0x0) || underlyingToken == address(0x0)) {
-    		return 0.01 ether;
+    		return getPriceSingleFee();
     	}
-    	return 0.02 ether;
+    	return getPriceSingleFee().mul(2);
     }
     
     // 小数转换
@@ -187,6 +189,17 @@ contract MortgagePool {
         return maxRate[mortgageToken].add(20).mul(1 ether).div(100);
     }
 
+    // 查看价格合约地址
+    function getQuaryAddress() public view returns(address) {
+        return address(quary);
+    }
+
+    // 查询单次价格调用费
+    function getPriceSingleFee() public view returns(uint256) {
+        (uint256 fee,,) = quary.params();
+        return fee;
+    }
+
     //---------governance----------
 
     // 设置管理员
@@ -222,6 +235,11 @@ contract MortgagePool {
     // 设置最高抵押率
     function setMaxRate(address token, uint256 num) public onlyGovernance {
     	maxRate[token] = num;
+    }
+
+    // 设置价格合约地址
+    function setQuaryAddress(address add) public onlyGovernance {
+        quary = INestQuery(add);
     }
 
     //---------transaction---------
@@ -442,12 +460,12 @@ contract MortgagePool {
     function exchangePTokenToUnderlying(address pToken, 
     	                                uint256 amount) public {
     	uint256 fee = amount.mul(2).div(1000);
-    	ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), amount.add(fee));
+    	ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), amount);
         address underlyingToken = pTokenToUnderlying[pToken];
     	if (underlyingToken != address(0x0)) {
-    		ERC20(underlyingToken).safeTransfer(address(msg.sender), getDecimalConversion(pToken, amount, underlyingToken));
+    		ERC20(underlyingToken).safeTransfer(address(msg.sender), getDecimalConversion(pToken, amount.sub(fee), underlyingToken));
     	} else {
-    		payEth(address(msg.sender), getDecimalConversion(pToken, amount, underlyingToken));
+    		payEth(address(msg.sender), getDecimalConversion(pToken, amount.sub(fee), underlyingToken));
     	}
     	// 消除负账户
         eliminate(pToken);
@@ -461,12 +479,12 @@ contract MortgagePool {
     	uint256 fee = amount.mul(2).div(1000);
     	if (token != address(0x0)) {
     		require(msg.value == 0, "Log:MortgagePool:msg.value!=0");
-    		ERC20(token).safeTransferFrom(address(msg.sender), address(this), amount.add(fee));
+    		ERC20(token).safeTransferFrom(address(msg.sender), address(this), amount);
     	} else {
-    		require(msg.value == amount.add(fee), "Log:MortgagePool:!msg.value");
+    		require(msg.value == amount, "Log:MortgagePool:!msg.value");
     	}
     	address pToken = underlyingToPToken[token];
-    	ERC20(pToken).safeTransfer(address(msg.sender), getDecimalConversion(token, amount, pToken));
+    	ERC20(pToken).safeTransfer(address(msg.sender), getDecimalConversion(token, amount.sub(fee), pToken));
     }
 
     // 认购保险
@@ -587,27 +605,22 @@ contract MortgagePool {
     // token:抵押资产地址
     // uToken:标的资产地址
     // tokenPrice:抵押资产Token数量
-    // uTokenPrice:标的资产Token数量
-    function getPrice(address token, 
-    	              address uToken) 
-        public view
-        returns (uint256 tokenPrice, 
-    	         uint256 uTokenPrice) {
-    	return (uint256(1 ether), uint256(1000000));
-
-    }
-
-    // 获取价格
-    // token:抵押资产地址
-    // uToken:标的资产地址
-    // tokenPrice:抵押资产Token数量
     // pTokenPrice:p资产Token数量
     function getPriceForPToken(address token, 
                                address uToken) 
-        public view
+        private
         returns (uint256 tokenPrice, 
                  uint256 pTokenPrice) {
-        (uint256 tokenAmount, uint256 uTokenAmount) = getPrice(token, uToken);
-        return (tokenAmount, getDecimalConversion(uToken, uTokenAmount, underlyingToPToken[uToken]));
+        uint256 priceFee = 0.01 ether;
+        if (token == address(0x0)) {
+            (,,uint256 avg,,) = quary.queryPriceAvgVola{value:priceFee}(uToken, address(msg.sender));
+            return (1 ether, getDecimalConversion(uToken, avg, underlyingToPToken[uToken]));
+        } else if (uToken == address(0x0)) {
+            (,,uint256 avg,,) = quary.queryPriceAvgVola{value:priceFee}(token, address(msg.sender));
+            return (getDecimalConversion(uToken, avg, underlyingToPToken[uToken]), 1 ether);
+        }
+        (,,uint256 avg1,,) = quary.queryPriceAvgVola{value:priceFee}(token, address(msg.sender));
+        (,,uint256 avg2,,) = quary.queryPriceAvgVola{value:priceFee}(uToken, address(msg.sender));
+        return (avg1, getDecimalConversion(uToken, avg2, underlyingToPToken[uToken]));
     }
 }
