@@ -68,6 +68,3 @@ main()
     console.error(error);
     process.exit(1);
 });
-
-  8166666666
-  16333333333
