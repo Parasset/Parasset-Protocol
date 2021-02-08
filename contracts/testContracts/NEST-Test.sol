@@ -32,15 +32,15 @@ interface NERC20 {
  * all accounts just by listening to said events. Note that this isn't required by the specification, and other
  * compliant implementations may not do it.
  */
-contract LYK is NERC20 {
+contract NEST is NERC20 {
     using SafeMath for uint256;
 
     mapping (address => uint256) private _balances;
     mapping (address => mapping (address => uint256)) private _allowed;
 
     uint256 private _totalSupply = 10000000000 ether;
-    string public name = "LYK";
-    string public symbol = "LYK";
+    string public name = "NEST";
+    string public symbol = "NEST";
     uint8 public decimals = 18;
 
     constructor () public {
