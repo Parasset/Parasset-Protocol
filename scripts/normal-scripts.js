@@ -23,6 +23,32 @@ exports.deployUSDT= async function () {
     return USDT;
 }
 
+// 部署NEST
+exports.deployNEST= async function () {
+    const NESTContract = await ethers.getContractFactory("NEST");
+    const NEST = await NESTContract.deploy();
+    const tx = NEST.deployTransaction;
+    await tx.wait(1);
+    console.log(`>>> [DPLY]: NEST deployed, address=${NEST.address}, block=${tx.blockNumber}`);
+    return NEST;
+}
+
+// 部署价格合约
+exports.deployNestQuery= async function () {
+	const NestQueryContract = await ethers.getContractFactory("NestQuery");
+    const NestQuery = await NestQueryContract.deploy();
+    const tx = NestQuery.deployTransaction;
+    await tx.wait(1);
+    console.log(`>>> [DPLY]: NestQuery deployed, address=${NestQuery.address}, block=${tx.blockNumber}`);
+    return NestQuery;
+}
+// 修改价格
+exports.setPrice = async function (quaryAddress, token, avg) {
+	const NestQueryContract = await ethers.getContractAt("NestQuery", quaryAddress);
+	const set = NestQueryContract.setPrice(token, avg);
+	console.log(`>>> [SETPRICE]: ${token} => ${avg}`);
+}
+
 // 部署抵押池
 exports.deployMortgagePool = async function () {
 	const MortgagePool = await hre.ethers.getContractFactory("MortgagePool");
@@ -53,6 +79,13 @@ exports.allow = async function (mortgagePool, PToken, MToken) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const allow = await pool.setMortgageAllow(PToken, MToken, "1");
     console.log(`>>> [ALLOW SUCCESS]`);
+}
+
+// 设置价格合约
+exports.setQuaryAddress = async function (mortgagePool, quary) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const setQuary = await pool.setQuaryAddress(quary);
+    console.log(`>>> [setQuaryAddress SUCCESS]`);
 }
 
 // 设置最高抵押
@@ -143,18 +176,12 @@ exports.getFee = async function (mortgagePool, mortgageAssets, parassetAssets, b
 }
 
 // 查看价格
-exports.getPriceForPToken = async function (mortgagePool, MToken, token) {
-	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-	const price = await pool.getPriceForPToken(MToken, token);
-	console.log(">>>>>> PRICE =", price[0].toString(), price[1].toString());
-	return [price[0], price[1]];
-}
-exports.getPrice = async function (mortgagePool, MToken, token) {
-	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-	const price = await pool.getPrice(MToken, token);
-	console.log(">>>>>> PRICE =", price[0].toString(), price[1].toString());
-	return [price[0], price[1]];
-}
+// exports.getPriceForPToken = async function (mortgagePool, MToken, token) {
+// 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+// 	const price = await pool.getPriceForPToken(MToken, token);
+// 	console.log(">>>>>> PRICE =", price[0].toString(), price[1].toString());
+// 	return [price[0], price[1]];
+// }
 
 // 查询ERC20余额
 exports.ERC20Balance = async function (token, add) {

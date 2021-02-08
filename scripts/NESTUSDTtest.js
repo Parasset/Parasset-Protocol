@@ -8,31 +8,36 @@ const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,setPrice,setMaxRate,setQua
 
 async function main() {
 	const accounts = await ethers.getSigners();
-	const ETHAddress = "0x0000000000000000000000000000000000000000";
 	USDTContract = await deployUSDT();
+	NESTContract = await deployNEST();
+	NestQuery = await deployNestQuery();
 	pool = await deployMortgagePool();
 	await approve(USDTContract.address, pool.address, USDT("999999"));
+	await approve(NESTContract.address, pool.address, ETH("999999"));
 	await create(pool.address, USDTContract.address, "USDT");
 	const tokens = await getTokenInfo(pool.address, USDTContract.address);
 	const USDTPToken = tokens[0];
 	const USDTShare = tokens[1];
-	await allow(pool.address, USDTPToken, ETHAddress);
-	await setMaxRate(pool.address, ETHAddress, "70");
+	await allow(pool.address, USDTPToken, NESTContract.address);
+	await setMaxRate(pool.address, NESTContract.address, "70");
+	await setPrice(NestQuery.address,NESTContract.address, ETH("1"));
+	await setPrice(NestQuery.address,USDTContract.address, USDT("1"));
+	await setQuaryAddress(pool.address,NestQuery.address);
 	// 铸币
-	await coin(pool.address, ETHAddress, USDTPToken, ETH("4"), "70", "4010000000000000000");
-	const ledger = await getLedger(pool.address, USDTPToken, ETHAddress);
+	await coin(pool.address, NESTContract.address, USDTPToken, ETH("4"), "70", "20000000000000000");
+	const ledger = await getLedger(pool.address, USDTPToken, NESTContract.address);
 
 	await approve(USDTPToken, pool.address, ETH("999999"));
 
 	// 增加抵押
-	await supplement(pool.address, ETHAddress, USDTPToken, ETH("2"), "2010000000000000000");
-	await getLedger(pool.address, USDTPToken, ETHAddress);
+	await supplement(pool.address, NESTContract.address, USDTPToken, ETH("2"), "20000000000000000");
+	await getLedger(pool.address, USDTPToken, NESTContract.address);
 	// 减少抵押
-	await decrease(pool.address, ETHAddress, USDTPToken, ETH("1"), "10000000000000000");
-	await getLedger(pool.address, USDTPToken, ETHAddress);
+	await decrease(pool.address, NESTContract.address, USDTPToken, ETH("1"), "20000000000000000");
+	await getLedger(pool.address, USDTPToken, NESTContract.address);
 	// 赎回
-	await redemption(pool.address, ETHAddress, USDTPToken, ETH("1"), "10000000000000000");
-	await getLedger(pool.address, USDTPToken, ETHAddress);
+	await redemption(pool.address, NESTContract.address, USDTPToken, ETH("1"), "20000000000000000");
+	await getLedger(pool.address, USDTPToken, NESTContract.address);
 
 	// 认购保险
 	await ERC20Balance(USDTShare, accounts[0].address);
