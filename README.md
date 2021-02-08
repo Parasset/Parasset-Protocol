@@ -18,7 +18,10 @@ npx hardhat compile
 ## 运行
 
 ```
-npx hardhat run scripts/deploy-script.js
+// 抵押ETH铸PUSDT
+npx hardhat run scripts/ETHUSDTtest.js
+// 抵押NEST铸PUSDT
+npx hardhat run scripts/NESTUSDTtest.js
 ```
 
 
