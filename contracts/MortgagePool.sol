@@ -10,6 +10,7 @@ import './lib/SafeERC20.sol';
 import "./lib/AddressPayable.sol";
 import "./iface/INestQuery.sol";
 import "./iface/IERC20.sol";
+import "./iface/IInsurancePool.sol";
 
 contract MortgagePool {
 	using SafeMath for uint256;
@@ -18,23 +19,20 @@ contract MortgagePool {
 
     // 管理员地址
 	address public governance;
-    // p资产地址=>保险池地址
-	mapping(address=>address) pTokenToIns;
 	// 标的资产地址=>p资产地址
-	mapping(address=>address) underlyingToPToken;
+	mapping(address=>address) public underlyingToPToken;
 	// p资产地址=>标的资产地址
-	mapping(address=>address) pTokenToUnderlying;
+	mapping(address=>address) public pTokenToUnderlying;
     // p资产地址=>抵押资产地址=>bool
 	mapping(address=>mapping(address=>bool)) mortgageAllow;
     // p资产=>抵押资产=>用户地址=>债仓数据
 	mapping(address=>mapping(address=>mapping(address=>PersonalLedger))) ledger;
-    // 保险池地址=>负账户资金数量
-	mapping(address=>uint256) insNegative;
     // 抵押资产=>最高抵押率
     mapping(address=>uint256) maxRate;
-    // 价格和与
+    // 价格合约
     INestQuery quary;
-
+    // 保险池合约
+    IInsurancePool insurancePool;
 	// 市场基础利率，年化2%
 	uint256 r0 = 0.02 ether;
 	// 一年的出块量
@@ -148,11 +146,11 @@ contract MortgagePool {
     }
 
     // 查看p资产地址和标的资产地址
-    function getPTokenAddressAndInsAddress(address underlyingToken) 
-    	public view returns(address pTokenAddress, 
-    						address insAddress) {
-    	return (underlyingToPToken[underlyingToken], pTokenToIns[underlyingToPToken[underlyingToken]]);
-    }
+    // function getPTokenAddressAndInsAddress(address underlyingToken) 
+    // 	public view returns(address pTokenAddress, 
+    // 						address insAddress) {
+    // 	return (underlyingToPToken[underlyingToken], pTokenToIns[underlyingToPToken[underlyingToken]]);
+    // }
 
     // 查看债仓数据
     function getLedger(address pToken, 
@@ -162,6 +160,16 @@ contract MortgagePool {
     		                uint256 blockHeight) {
     	PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
     	return (pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight);
+    }
+
+    // 查看管理员地址
+    function getGovernance() public view returns(address) {
+        return governance;
+    }
+
+    // 查看保险池地址
+    function getInsurancePool() public view returns(address) {
+        return address(insurancePool);
     }
 
     // 查看市场基础利率
@@ -200,6 +208,16 @@ contract MortgagePool {
         return fee;
     }
 
+    // 根据标的资产查看p资产地址
+    function getUnderlyingToPToken(address uToken) public view returns(address) {
+        return underlyingToPToken[uToken];
+    }
+
+    // 根据p资产查看标的资产地址
+    function getPTokenToUnderlying(address pToken) public view returns(address) {
+        return pTokenToUnderlying[pToken];
+    }
+
     //---------governance----------
 
     // 设置管理员
@@ -215,6 +233,11 @@ contract MortgagePool {
     	                      address mortgageToken, 
     	                      bool allow) public onlyGovernance {
     	mortgageAllow[pToken][mortgageToken] = allow;
+    }
+
+    // 设置保险池合约
+    function setInsurancePool(address add) public onlyGovernance {
+        insurancePool = IInsurancePool(add);
     }
 
     // 设置市场基础利率
@@ -250,11 +273,12 @@ contract MortgagePool {
     function create(address token, 
     				string memory name) public onlyGovernance {
         require(underlyingToPToken[token] == address(0x0), "Log:MortgagePool:!underlyingToPToken");
-        PToken pToken = new PToken(strConcat("P_", name), strConcat("P_", name));
-        Insurance ins = new Insurance(strConcat("I_", name), strConcat("I_", name));
+        require(address(insurancePool) != address(0x0), "Log:MortgagePool:0x0");
+        PToken pToken = new PToken(strConcat("P_", name), strConcat("P_", name), address(this), address(insurancePool));
+        Insurance ins = new Insurance(strConcat("I_", name), strConcat("I_", name), address(this), address(insurancePool));
         underlyingToPToken[token] = address(pToken);
         pTokenToUnderlying[address(pToken)] = token;
-        pTokenToIns[address(pToken)] = address(ins);
+        insurancePool.setPTokenToIns(address(pToken), address(ins));
 
         emit createLog(address(pToken), address(ins));
     }
@@ -270,6 +294,7 @@ contract MortgagePool {
                   uint256 amount, 
                   uint256 rate) public payable {
     	require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+        require(rate != 0, "Log:MortgagePool:rate=0");
     	PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
     	// 获取价格
         (uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, pTokenToUnderlying[pToken]);
@@ -277,9 +302,9 @@ contract MortgagePool {
             // 结算稳定费
             uint256 fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
             // 转入p资产
-            ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), fee);
+            ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
-            eliminate(pToken);
+            insurancePool.eliminate(pToken);
     	}
     	// 转入抵押token
     	uint256 priceFee = getPriceFee(mortgageToken, pTokenToUnderlying[pToken]);
@@ -315,9 +340,9 @@ contract MortgagePool {
             // 结算稳定费
             uint256 fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
             // 转入p资产
-            ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), fee);
+            ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
-            eliminate(pToken);
+            insurancePool.eliminate(pToken);
     	}
     	// 转入抵押token
     	uint256 priceFee = getPriceFee(mortgageToken, pTokenToUnderlying[pToken]);
@@ -349,9 +374,9 @@ contract MortgagePool {
             // 结算稳定费
             uint256 fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
             // 转入p资产
-            ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), fee);
+            ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
-            eliminate(pToken);
+            insurancePool.eliminate(pToken);
     	}
     	uint256 priceFee = getPriceFee(mortgageToken, pTokenToUnderlying[pToken]);
     	require(msg.value == priceFee, "Log:MortgagePool:msg.value!=priceFee");
@@ -385,14 +410,14 @@ contract MortgagePool {
             // 结算稳定费
             uint256 fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
             // 转入p资产
-            ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), pTokenAmount.add(fee));
+            ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), pTokenAmount.add(fee));
             // 消除负账户
-            eliminate(pToken);
+            insurancePool.eliminate(pToken);
     	}
     	uint256 priceFee = getPriceFee(mortgageToken, pTokenToUnderlying[pToken]);
     	require(msg.value == priceFee, "Log:MortgagePool:msg.value!=priceFee");
     	// 销毁p资产
-    	destroyPToken(pToken, pTokenAmount);
+    	insurancePool.destroyPToken(pToken, pTokenAmount);
     	// 更新信息
     	pLedger.mortgageAssets = pLedger.mortgageAssets.sub(amount);
     	if (pLedger.mortgageAssets == 0) {
@@ -436,11 +461,11 @@ contract MortgagePool {
     	uint256 kLine = getKLine(pLedger.parassetAssets.add(fee), pLedger.mortgageAssets, tokenPrice, pTokenPrice);
     	require(kLine > clearingLine(mortgageToken), "Log:MortgagePool:!kLine");
     	// 转入P资产
-    	ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), pTokenAmount);
+    	ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), pTokenAmount);
     	// 消除负账户
-        eliminate(pToken);
+        insurancePool.eliminate(pToken);
         // 销毁p资产
-    	destroyPToken(pToken, pLedger.parassetAssets);
+    	insurancePool.destroyPToken(pToken, pLedger.parassetAssets);
     	// 更新信息
     	uint256 mortgageAssets = pLedger.mortgageAssets;
     	pLedger.mortgageAssets = 0;
@@ -451,145 +476,6 @@ contract MortgagePool {
     		ERC20(mortgageToken).safeTransfer(address(msg.sender), mortgageAssets);
     	} else {
     		payEth(address(msg.sender), mortgageAssets);
-    	}
-    }
-
-    // 兑换，p资产换标的资产
-    // pToken:pToken地址
-    // amount:pToken数量
-    function exchangePTokenToUnderlying(address pToken, 
-    	                                uint256 amount) public {
-    	uint256 fee = amount.mul(2).div(1000);
-    	ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), amount);
-        address underlyingToken = pTokenToUnderlying[pToken];
-    	if (underlyingToken != address(0x0)) {
-    		ERC20(underlyingToken).safeTransfer(address(msg.sender), getDecimalConversion(pToken, amount.sub(fee), underlyingToken));
-    	} else {
-    		payEth(address(msg.sender), getDecimalConversion(pToken, amount.sub(fee), underlyingToken));
-    	}
-    	// 消除负账户
-        eliminate(pToken);
-    }
-
-    // 兑换，标的资产换p资产
-    // token:标的资产地址
-    // amount:标的资产数量
-    function exchangeUnderlyingToPToken(address token, 
-    	                                uint256 amount) public payable {
-    	uint256 fee = amount.mul(2).div(1000);
-    	if (token != address(0x0)) {
-    		require(msg.value == 0, "Log:MortgagePool:msg.value!=0");
-    		ERC20(token).safeTransferFrom(address(msg.sender), address(this), amount);
-    	} else {
-    		require(msg.value == amount, "Log:MortgagePool:!msg.value");
-    	}
-    	address pToken = underlyingToPToken[token];
-    	ERC20(pToken).safeTransfer(address(msg.sender), getDecimalConversion(token, amount.sub(fee), pToken));
-    }
-
-    // 认购保险
-    // token:标的资产地址，USDT、ETH...
-    // amount:标的资产数量
-    function subscribeIns(address token, 
-    	                  uint256 amount) public payable {
-    	uint256 tokenBalance;
-    	address pToken = underlyingToPToken[token];
-        require(pToken != address(0x0), "Log:MortgagePool:!underlyingToPToken");
-    	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
-    	if (token != address(0x0)) {
-    		tokenBalance = ERC20(token).balanceOf(address(this));
-    	} else {
-    		require(msg.value == amount, "Log:MortgagePool:!msg.value");
-    		tokenBalance = address(this).balance;
-    	}
-    	uint256 allValue = tokenBalance.add(pTokenBalance).sub(insNegative[pTokenToIns[pToken]]);
-    	Insurance ins = Insurance(pTokenToIns[pToken]);
-    	uint256 insAmount = getDecimalConversion(token, amount, pToken);
-    	uint256 insTotal = ins.totalSupply();
-    	if (insTotal != 0) {
-    		insAmount = getDecimalConversion(token, amount, pToken).mul(insTotal).div(allValue);
-    	}
-    	// 转入标的资产
-    	if (token != address(0x0)) {
-    		require(msg.value == 0, "Log:MortgagePool:msg.value!=0");
-    		ERC20(token).safeTransferFrom(address(msg.sender), address(this), amount);
-    	}
-    	// 增发份额
-    	ins.issuance(insAmount, address(msg.sender));
-    }
-
-    // 赎回保险
-    // token:标的资产地址，USDT、ETH...
-    // amount:赎回份额
-    function redemptionIns(address token, 
-    	                   uint256 amount) public {
-    	require(underlyingToPToken[token] != address(0x0), "Log:MortgagePool:!underlyingToPToken");
-    	uint256 tokenBalance;
-    	address pToken = underlyingToPToken[token];
-    	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
-    	if (token != address(0x0)) {
-    		tokenBalance = ERC20(token).balanceOf(address(this));
-    	} else {
-    		tokenBalance = address(this).balance;
-    	}
-    	uint256 allValue = tokenBalance.add(getDecimalConversion(pToken, pTokenBalance, token))
-                           .sub(getDecimalConversion(pToken, insNegative[pTokenToIns[pToken]], token));
-    	Insurance ins = Insurance(pTokenToIns[pToken]);
-    	uint256 insTotal = ins.totalSupply();
-    	uint256 underlyingAmount = amount.mul(allValue).div(insTotal);
-    	
-    	// 转出标的资产
-    	if (token != address(0x0)) {
-            if (tokenBalance >= underlyingAmount) {
-                ERC20(token).safeTransfer(address(msg.sender), underlyingAmount);
-            } else {
-                ERC20(token).safeTransfer(address(msg.sender), tokenBalance);
-                ERC20(pToken).safeTransfer(address(msg.sender), 
-                                           getDecimalConversion(token, underlyingAmount.sub(tokenBalance), pToken));
-            }
-    	} else {
-            if (tokenBalance >= underlyingAmount) {
-                payEth(address(msg.sender), underlyingAmount);
-            } else {
-                payEth(address(msg.sender), tokenBalance);
-                ERC20(pToken).safeTransfer(address(msg.sender), 
-                                           underlyingAmount.sub(tokenBalance));
-            }
-    	}
-    	// 销毁份额
-    	ins.destroy(amount, address(msg.sender));
-    }
-
-    // 销毁P资产，更新负账户
-    // pToken:p资产地址
-    // amount:销毁数量
-    function destroyPToken(address pToken, 
-    	                   uint256 amount) internal {
-    	PToken pErc20 = PToken(pToken);
-    	uint256 pTokenBalance = pErc20.balanceOf(address(this));
-    	if (pTokenBalance >= amount) {
-    		pErc20.destroy(amount, address(this));
-    	} else {
-    		pErc20.destroy(pTokenBalance, address(this));
-    		// 记录负账户
-    		insNegative[pTokenToIns[pToken]] = insNegative[pTokenToIns[pToken]].add(amount.sub(pTokenBalance));
-    	}
-    }
-
-    // 消除负账户
-    // pToken:p资产地址
-    function eliminate(address pToken) internal {
-    	PToken pErc20 = PToken(pToken);
-    	uint256 negative = insNegative[pTokenToIns[pToken]];
-    	uint256 pTokenBalance = pErc20.balanceOf(address(this)); 
-    	if (negative > 0 && pTokenBalance > 0) {
-    		if (negative >= pTokenBalance) {
-    			insNegative[pTokenToIns[pToken]] = insNegative[pTokenToIns[pToken]].sub(pTokenBalance);
-    			pErc20.destroy(pTokenBalance, address(this));
-    		} else {
-    			insNegative[pTokenToIns[pToken]] = 0;
-    			pErc20.destroy(insNegative[pTokenToIns[pToken]], address(this));
-    		}
     	}
     }
 

@@ -15,23 +15,27 @@ contract Insurance is IInsurance {
     uint8 public decimals = 18;
 
     address public mortgagePool;
+    address public insurancePool;
 
     event Destroy(uint256 amount, address account);
     event Issuance(uint256 amount, address account);
 
     constructor (string memory _name, 
-                 string memory _symbol) public {
-    	name = _name;                                                               
+                 string memory _symbol,
+                 address _mortgagePool, 
+                 address _insurancePool) public {
+        name = _name;                                                               
         symbol = _symbol;
-        mortgagePool = address(msg.sender);
+        mortgagePool = _mortgagePool;
+        insurancePool = _insurancePool;
     }
 
     //---------modifier---------
 
-    modifier onlyMortgagePool()
+    modifier onlyPool()
     {
-    	require(msg.sender == mortgagePool, "Log:Insurance:!mortgagePool");
-    	_;
+        require(msg.sender == mortgagePool || msg.sender == insurancePool, "Log:Insurance:!Pool");
+        _;
     }
 
     //---------view---------
@@ -102,14 +106,14 @@ contract Insurance is IInsurance {
         emit Transfer(from, to, value);
     }
 
-    function destroy(uint256 amount, address account) override external onlyMortgagePool{
+    function destroy(uint256 amount, address account) override external onlyPool{
     	require(_balances[account] >= amount, "Log:Insurance:!destroy");
     	_balances[account] = _balances[account].sub(amount);
     	_totalSupply = _totalSupply.sub(amount);
     	emit Destroy(amount, account);
     }
 
-    function issuance(uint256 amount, address account) override external onlyMortgagePool{
+    function issuance(uint256 amount, address account) override external onlyPool{
     	_balances[account] = _balances[account].add(amount);
     	_totalSupply = _totalSupply.add(amount);
     	emit Issuance(amount, account);

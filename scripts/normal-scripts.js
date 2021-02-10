@@ -60,7 +60,32 @@ exports.deployMortgagePool = async function () {
     return pool;
 }
 
-// 授权给抵押池
+// 部署保险池
+exports.deployInsurancePool = async function () {
+	const InsurancePool = await hre.ethers.getContractFactory("InsurancePool");
+    const pool = await InsurancePool.deploy();
+    await pool.deployed();
+    const tx = pool.deployTransaction;
+    await tx.wait(1);
+    console.log(`>>> [DPLY]: InsurancePool deployed, address=${pool.address}, block=${tx.blockNumber}`);
+    return pool;
+}
+
+// 抵押合约-设置保险池
+exports.setInsurancePool = async function (mortgagePool, add) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const set = await pool.setInsurancePool(add);
+    console.log(`>>> [setInsurancePool SUCCESS]`);
+}
+
+// 保险合约-设置抵押池
+exports.setMortgagePool = async function (insurancePool, add) {
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
+    const set = await pool.setMortgagePool(add);
+    console.log(`>>> [setMortgagePool SUCCESS]`);
+}
+
+// 授权
 exports.approve = async function (token, to, value) {
 	const ERC20Contract = await ethers.getContractAt("IERC20", token);
     const approve = await ERC20Contract.approve(to, value);
@@ -128,27 +153,27 @@ exports.redemption = async function(mortgagePool, MToken, PToken, MTokenAmount, 
 }
 
 // 兑换
-exports.exchangePTokenToUnderlying = async function(mortgagePool, PToken, amount) {
-	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+exports.exchangePTokenToUnderlying = async function(insurancePool, PToken, amount) {
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
 	const exchange = await pool.exchangePTokenToUnderlying(PToken, amount);
 	console.log(`>>> [exchange SUCCESS], exchange:${PToken}->${amount}`);
 }
-exports.exchangeUnderlyingToPToken = async function(mortgagePool, token, amount) {
-	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+exports.exchangeUnderlyingToPToken = async function(insurancePool, token, amount) {
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
 	const exchange = await pool.exchangeUnderlyingToPToken(token, amount);
 	console.log(`>>> [exchange SUCCESS], exchange:${token}->${amount}`);
 }
 
 // 认购保险
-exports.subscribeIns = async function(mortgagePool, token, amount) {
-	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+exports.subscribeIns = async function(insurancePool, token, amount) {
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
 	const subscribe = await pool.subscribeIns(token, amount);
 	console.log(`>>> [subscribeIns SUCCESS], subscribeIns:${token}->${amount}`);
 }
 
 // 赎回保险
-exports.redemptionIns = async function(mortgagePool, token, amount) {
-	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+exports.redemptionIns = async function(insurancePool, token, amount) {
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
 	const redemption = await pool.redemptionIns(token, amount);
 	console.log(`>>> [redemption SUCCESS], redemption:${token}->${amount}`);
 }
@@ -191,10 +216,12 @@ exports.ERC20Balance = async function (token, add) {
 }
 
 // 查看抵押token信息
-exports.getTokenInfo = async function (mortgagePool ,token) {
+exports.getTokenInfo = async function (mortgagePool, insurancePool ,token) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-    const tokensAdd = await pool.getPTokenAddressAndInsAddress(token);
-    console.log(`>>> pTokenAddress=${tokensAdd[0]}`);
-    console.log(`>>> insAddress=${tokensAdd[1]}`);
-    return [tokensAdd[0], tokensAdd[1]]
+    const pToken = await pool.underlyingToPToken(token);
+    console.log(`>>> pTokenAddress=${pToken}`);
+    const pool2 = await ethers.getContractAt("InsurancePool", insurancePool);
+    const ins = await pool2.getPTokenToIns(pToken);
+    console.log(`>>> insAddress=${ins}`);
+    return [pToken, ins]
 }
