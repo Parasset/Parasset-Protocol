@@ -5,7 +5,7 @@ const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,setIns
 	deployMortgagePool,approve,create,
 	getTokenInfo,allow,coin,getLedger,supplement,
 	getFee,ERC20Balance,redemption,decrease,
-	exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns} = require("./normal-scripts.js");
+	exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,getTotalSupply,getBalances,subscribeIns,redemptionIns} = require("./normal-scripts.js");
 
 async function main() {
 	const accounts = await ethers.getSigners();
@@ -19,9 +19,7 @@ async function main() {
 	await setInsurancePool(pool.address, insurancePool.address);
 	await setMortgagePool(insurancePool.address, pool.address);
 	await create(pool.address, USDTContract.address, "USDT");
-	const tokens = await getTokenInfo(pool.address, insurancePool.address, USDTContract.address);
-	const USDTPToken = tokens[0];
-	const USDTShare = tokens[1];
+	const USDTPToken = await getTokenInfo(pool.address, insurancePool.address, USDTContract.address);
 	await allow(pool.address, USDTPToken, ETHAddress);
 	await setMaxRate(pool.address, ETHAddress, "70");
 	await approve(USDTPToken, pool.address, ETH("999999"));
@@ -45,9 +43,9 @@ async function main() {
 	// 认购保险
 	await approve(USDTContract.address, insurancePool.address, USDT("999999"));
 	await approve(USDTPToken, insurancePool.address, ETH("999999"));
-	await ERC20Balance(USDTShare, accounts[0].address);
+	await getBalances(insurancePool.address, accounts[0].address);
 	await subscribeIns(insurancePool.address, USDTContract.address, USDT(2));
-	await ERC20Balance(USDTShare, accounts[0].address);
+	await getBalances(insurancePool.address, accounts[0].address);
 	// 兑换
 	await ERC20Balance(USDTPToken, insurancePool.address);
 	await exchangePTokenToUnderlying(insurancePool.address, USDTPToken, ETH("1"));
@@ -58,15 +56,14 @@ async function main() {
 	await ERC20Balance(USDTContract.address, insurancePool.address);
 
 	// 赎回保险
-	await approve(USDTShare, insurancePool.address, ETH("999999"));
 	await ERC20Balance(USDTContract.address, insurancePool.address);
 	await ERC20Balance(USDTContract.address, accounts[0].address);
-	await ERC20Balance(USDTShare, accounts[0].address);
+	await getBalances(insurancePool.address, accounts[0].address);
 	await ERC20Balance(USDTPToken, insurancePool.address);
 	await redemptionIns(insurancePool.address, USDTContract.address, ETH("2"));
 	await ERC20Balance(USDTContract.address, insurancePool.address);
 	await ERC20Balance(USDTContract.address, accounts[0].address);
-	await ERC20Balance(USDTShare, accounts[0].address);
+	await getBalances(insurancePool.address, accounts[0].address);
 	await ERC20Balance(USDTPToken, insurancePool.address);
 }
 

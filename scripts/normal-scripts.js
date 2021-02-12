@@ -62,7 +62,7 @@ exports.deployMortgagePool = async function () {
 
 // 部署保险池
 exports.deployInsurancePool = async function () {
-	const InsurancePool = await hre.ethers.getContractFactory("InsurancePool");
+	const InsurancePool = await hre.ethers.getContractFactory("InsurancePoolV2");
     const pool = await InsurancePool.deploy();
     await pool.deployed();
     const tx = pool.deployTransaction;
@@ -80,7 +80,7 @@ exports.setInsurancePool = async function (mortgagePool, add) {
 
 // 保险合约-设置抵押池
 exports.setMortgagePool = async function (insurancePool, add) {
-	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
     const set = await pool.setMortgagePool(add);
     console.log(`>>> [setMortgagePool SUCCESS]`);
 }
@@ -154,26 +154,26 @@ exports.redemption = async function(mortgagePool, MToken, PToken, MTokenAmount, 
 
 // 兑换
 exports.exchangePTokenToUnderlying = async function(insurancePool, PToken, amount) {
-	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
 	const exchange = await pool.exchangePTokenToUnderlying(PToken, amount);
 	console.log(`>>> [exchange SUCCESS], exchange:${PToken}->${amount}`);
 }
 exports.exchangeUnderlyingToPToken = async function(insurancePool, token, amount) {
-	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
 	const exchange = await pool.exchangeUnderlyingToPToken(token, amount);
 	console.log(`>>> [exchange SUCCESS], exchange:${token}->${amount}`);
 }
 
 // 认购保险
 exports.subscribeIns = async function(insurancePool, token, amount) {
-	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
 	const subscribe = await pool.subscribeIns(token, amount);
 	console.log(`>>> [subscribeIns SUCCESS], subscribeIns:${token}->${amount}`);
 }
 
 // 赎回保险
 exports.redemptionIns = async function(insurancePool, token, amount) {
-	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
 	const redemption = await pool.redemptionIns(token, amount);
 	console.log(`>>> [redemption SUCCESS], redemption:${token}->${amount}`);
 }
@@ -183,6 +183,21 @@ exports.transfer = async function(token, to, value) {
 	const ERC20Contract = await ethers.getContractAt("IERC20", token);
     const approve = await ERC20Contract.transfer(to, value);
     console.log(`>>> [transfer]: ${token} transfer ${value} to ${to}`);
+}
+
+// 查询LP总量
+exports.getTotalSupply = async function (insurancePool, token) {
+	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+    const totalSupply = await pool.getTotalSupply(token);
+    console.log(">>>>>> totalSupply =", totalSupply.toString());
+    return totalSupply;
+}
+// 查询个人LP
+exports.getBalances = async function (insurancePool, token) {
+	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+    const balances = await pool.getBalances(token);
+    console.log(">>>>>> balances =", balances.toString());
+    return balances;
 }
 
 // 查看债仓信息
@@ -220,8 +235,5 @@ exports.getTokenInfo = async function (mortgagePool, insurancePool ,token) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const pToken = await pool.underlyingToPToken(token);
     console.log(`>>> pTokenAddress=${pToken}`);
-    const pool2 = await ethers.getContractAt("InsurancePool", insurancePool);
-    const ins = await pool2.getPTokenToIns(pToken);
-    console.log(`>>> insAddress=${ins}`);
-    return [pToken, ins]
+    return pToken;
 }
