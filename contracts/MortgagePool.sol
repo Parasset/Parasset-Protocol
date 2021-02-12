@@ -277,7 +277,7 @@ contract MortgagePool {
         PToken pToken = new PToken(strConcat("P_", name), strConcat("P_", name), address(this), address(insurancePool));
         underlyingToPToken[token] = address(pToken);
         pTokenToUnderlying[address(pToken)] = token;
-
+        insurancePool.setLatestTime(token);
         emit createLog(address(pToken));
     }
     

@@ -136,6 +136,11 @@ contract InsurancePoolV2 {
     	governance = add;
     }
 
+    // 设置最新赎回节点
+    function setLatestTime(address token) public onlyMortgagePool {
+        latestTime[token] = now.add(waitCycle);
+    }
+
     //---------transaction---------
 
 	// 兑换，p资产换标的资产
@@ -311,7 +316,10 @@ contract InsurancePoolV2 {
     		latestTime[token] = latestTime[token].add(waitCycle.mul(uint256(1).add(subTime)));
     	}
     }
-
+    // 销毁份额
+    // token:标的资产地址
+    // amount:销毁数量数量
+    // account:销毁用户地址
     function destroy(address token, uint256 amount, address account) private {
         require(balances[account][token] >= amount, "Log:InsurancePool:!destroy");
         balances[account][token] = balances[account][token].sub(amount);
@@ -319,6 +327,10 @@ contract InsurancePoolV2 {
         emit Destroy(token, amount, account);
     }
 
+    // 增发份额
+    // token:标的资产地址
+    // amount:增发数量
+    // account:增发用户地址
     function issuance(address token, uint256 amount, address account) private {
         balances[account][token] = balances[account][token].add(amount);
         totalSupply[token] = totalSupply[token].add(amount);
