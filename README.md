@@ -17,11 +17,20 @@ npx hardhat compile
 
 ## 运行
 
+### 本地环境
+
 ```
 // 抵押ETH铸PUSDT
 npx hardhat run scripts/ETHUSDTtest.js
 // 抵押NEST铸PUSDT
 npx hardhat run scripts/NESTUSDTtest.js
+```
+
+### Ropsten
+
+```
+npx hardhat run scripts/deployAndSetting_ropsten.js --network ropsten
+
 ```
 
 

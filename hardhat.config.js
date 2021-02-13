@@ -1,4 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
+const config = require('./.private.json');
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -30,6 +32,28 @@ module.exports = {
     alphaSort: true,
     runOnCompile: false,
     disambiguatePaths: false,
-  }
+  },
+  gasReporter: {
+    currency: 'USD',
+    gasPrice: 21,
+    enabled: (process.env.REPORT_GAS) ? true : false
+  },
+  networks: {
+    ropsten: {
+      url: `https://ropsten.infura.io/v3/${config.alchemy.ropsten.apiKey}`,
+      accounts: [config.account.ropsten.key, config.account.ropsten.userA, config.account.ropsten.userB],
+      gasPrice: 5e10
+    },
+    mainnet: {
+      url: `https://mainnet.infura.io/v3/${config.alchemy.mainnet.apiKey}`,
+      accounts: [config.account.mainnet.key, config.account.mainnet.userA, config.account.mainnet.userB],
+      gasPrice:18e10
+    },
+  },
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: "VGP4QHH72VGNQ1ANCFZ75YJRYYY5K9JB28",
+  },
 };
 

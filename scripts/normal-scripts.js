@@ -45,7 +45,8 @@ exports.deployNestQuery= async function () {
 // 修改价格
 exports.setPrice = async function (quaryAddress, token, avg) {
 	const NestQueryContract = await ethers.getContractAt("NestQuery", quaryAddress);
-	const set = NestQueryContract.setPrice(token, avg);
+	const set = await NestQueryContract.setPrice(token, avg);
+	await set.wait(3);
 	console.log(`>>> [SETPRICE]: ${token} => ${avg}`);
 }
 
@@ -75,6 +76,7 @@ exports.deployInsurancePool = async function () {
 exports.setInsurancePool = async function (mortgagePool, add) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const set = await pool.setInsurancePool(add);
+    await set.wait(10);
     console.log(`>>> [setInsurancePool SUCCESS]`);
 }
 
@@ -82,6 +84,7 @@ exports.setInsurancePool = async function (mortgagePool, add) {
 exports.setMortgagePool = async function (insurancePool, add) {
 	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
     const set = await pool.setMortgagePool(add);
+    await set.wait(10);
     console.log(`>>> [setMortgagePool SUCCESS]`);
 }
 
@@ -96,6 +99,7 @@ exports.approve = async function (token, to, value) {
 exports.create = async function (mortgagePool ,token, name) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const create = await pool.create(token, name);
+    await create.wait(10);
     console.log(`>>> [CREATE SUCCESS]`);
 }
 
@@ -183,6 +187,13 @@ exports.transfer = async function(token, to, value) {
 	const ERC20Contract = await ethers.getContractAt("IERC20", token);
     const approve = await ERC20Contract.transfer(to, value);
     console.log(`>>> [transfer]: ${token} transfer ${value} to ${to}`);
+}
+
+// 查看保险池地址
+exports.getInsurancePool = async function(mortgagePool) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+	const insurancePool = await pool.getInsurancePool();
+	console.log(`>>> InsurancePool=${insurancePool}`);
 }
 
 // 查询LP总量

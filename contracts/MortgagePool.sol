@@ -3,7 +3,6 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "./PToken.sol";
-import "./Insurance.sol";
 import "./lib/SafeMath.sol";
 import './lib/TransferHelper.sol';
 import './lib/SafeERC20.sol';
@@ -272,7 +271,7 @@ contract MortgagePool {
     // name:P资产Token名称、保险Token名称
     function create(address token, 
     				string memory name) public onlyGovernance {
-        require(underlyingToPToken[token] == address(0x0), "Log:MortgagePool:!underlyingToPToken");
+        require(underlyingToPToken[token] == address(0x0), "Log:MortgagePool:underlyingToPToken");
         require(address(insurancePool) != address(0x0), "Log:MortgagePool:0x0");
         PToken pToken = new PToken(strConcat("P_", name), strConcat("P_", name), address(this), address(insurancePool));
         underlyingToPToken[token] = address(pToken);
