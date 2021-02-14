@@ -33,5 +33,33 @@ npx hardhat run scripts/deployAndSetting_ropsten.js --network ropsten
 
 ```
 
+### .private.js
+
+```
+{
+    "alchemy": {
+        "ropsten": {
+            "apiKey": "XXX"
+        },
+        "mainnet": {
+            "apiKey": "XXX"
+        }
+    },
+    //	填写私钥
+    "account": {
+        "ropsten": {
+            "key": "XXX",
+            "userA": "XXX",
+            "userB": "XXX"
+        },
+        "mainnet": {
+            "key": "XXX",
+            "userA": "XXX",
+            "userB": "XXX"
+        }
+    }
+}
+```
+
 
 
