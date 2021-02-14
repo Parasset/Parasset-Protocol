@@ -35,6 +35,8 @@ npx hardhat run scripts/deployAndSetting_ropsten.js --network ropsten
 
 ### .private.js
 
+>将sample.private.js更名为.private.js
+
 ```
 {
     //  infura节点私钥
