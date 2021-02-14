@@ -33,9 +33,9 @@ npx hardhat run scripts/deployAndSetting_ropsten.js --network ropsten
 
 ```
 
-### .private.js
+### .private.json
 
->将sample.private.js更名为.private.js
+>将sample.private.json更名为.private.json
 
 ```
 {
