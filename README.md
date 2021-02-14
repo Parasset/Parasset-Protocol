@@ -37,6 +37,7 @@ npx hardhat run scripts/deployAndSetting_ropsten.js --network ropsten
 
 ```
 {
+    //  infura节点私钥
     "alchemy": {
         "ropsten": {
             "apiKey": "XXX"
@@ -45,7 +46,7 @@ npx hardhat run scripts/deployAndSetting_ropsten.js --network ropsten
             "apiKey": "XXX"
         }
     },
-    //	填写私钥
+    //  填写私钥
     "account": {
         "ropsten": {
             "key": "XXX",
