@@ -46,7 +46,7 @@ exports.deployNestQuery= async function () {
 exports.setPrice = async function (quaryAddress, token, avg) {
 	const NestQueryContract = await ethers.getContractAt("NestQuery", quaryAddress);
 	const set = await NestQueryContract.setPrice(token, avg);
-	await set.wait(3);
+	await set.wait(1);
 	console.log(`>>> [SETPRICE]: ${token} => ${avg}`);
 }
 
@@ -76,7 +76,7 @@ exports.deployInsurancePool = async function () {
 exports.setInsurancePool = async function (mortgagePool, add) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const set = await pool.setInsurancePool(add);
-    await set.wait(10);
+    await set.wait(1);
     console.log(`>>> [setInsurancePool SUCCESS]`);
 }
 
@@ -84,7 +84,7 @@ exports.setInsurancePool = async function (mortgagePool, add) {
 exports.setMortgagePool = async function (insurancePool, add) {
 	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
     const set = await pool.setMortgagePool(add);
-    await set.wait(10);
+    await set.wait(1);
     console.log(`>>> [setMortgagePool SUCCESS]`);
 }
 
@@ -99,7 +99,7 @@ exports.approve = async function (token, to, value) {
 exports.create = async function (mortgagePool ,token, name) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const create = await pool.create(token, name);
-    await create.wait(10);
+    await create.wait(1);
     console.log(`>>> [CREATE SUCCESS]`);
 }
 
@@ -149,11 +149,25 @@ exports.decrease = async function(mortgagePool, MToken, PToken, MTokenAmount, va
 	console.log(`>>> [decrease SUCCESS], decrease:${MTokenAmount}`);
 }
 
-// 赎回抵押
-exports.redemption = async function(mortgagePool, MToken, PToken, MTokenAmount, valueNum) {
+// 新增铸币
+exports.increaseCoinage = async function(mortgagePool, MToken, PToken, PTokenAmount, valueNum) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-	const supplement = await pool.redemption(MToken, PToken, MTokenAmount, {value:valueNum});
-	console.log(`>>> [redemption SUCCESS], redemption:${MTokenAmount}`);
+	const increaseCoinage = await pool.increaseCoinage(MToken, PToken, PTokenAmount, {value:valueNum});
+	console.log(`>>> [increaseCoinage SUCCESS], supplement:${PTokenAmount}`);
+}
+
+// 减少铸币
+exports.reducedCoinage = async function(mortgagePool, MToken, PToken, PTokenAmount, valueNum) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+	const reducedCoinage = await pool.reducedCoinage(MToken, PToken, PTokenAmount, {value:valueNum});
+	console.log(`>>> [reducedCoinage SUCCESS], supplement:${PTokenAmount}`);
+}
+
+// 赎回抵押
+exports.redemptionAll = async function(mortgagePool, MToken, PToken) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+	const supplement = await pool.redemptionAll(MToken, PToken);
+	console.log(`>>> [redemption SUCCESS]`);
 }
 
 // 兑换
@@ -215,8 +229,8 @@ exports.getBalances = async function (insurancePool, token) {
 exports.getLedger = async function (mortgagePool, PToken, MToken) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const ledger = await pool.getLedger(PToken, MToken);
-    console.log(">>>>>> ledger =", ledger[0].toString(), ledger[1].toString(), ledger[2].toString());
-    return [ledger[0], ledger[1], ledger[2]];
+    console.log(">>>>>> ledger =", ledger[0].toString(), ledger[1].toString(), ledger[2].toString(), ledger[3].toString());
+    return [ledger[0], ledger[1], ledger[2], ledger[3]];
 }
 
 // 查看稳定费
@@ -225,14 +239,6 @@ exports.getFee = async function (mortgagePool, mortgageAssets, parassetAssets, b
 	const getFee = await pool.getFee(mortgageAssets, parassetAssets, blockHeight, tokenPrice, pTokenPrice);
 	console.log(">>>>>> FEE =", getFee.toString());
 }
-
-// 查看价格
-// exports.getPriceForPToken = async function (mortgagePool, MToken, token) {
-// 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-// 	const price = await pool.getPriceForPToken(MToken, token);
-// 	console.log(">>>>>> PRICE =", price[0].toString(), price[1].toString());
-// 	return [price[0], price[1]];
-// }
 
 // 查询ERC20余额
 exports.ERC20Balance = async function (token, add) {

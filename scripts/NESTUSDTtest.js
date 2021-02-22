@@ -4,7 +4,7 @@ const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,setIns
 	setPrice,setMaxRate,setQuaryAddress,
 	deployMortgagePool,approve,create,
 	getTokenInfo,allow,coin,getLedger,supplement,
-	getFee,ERC20Balance,redemption,decrease,
+	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,
 	exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,getTotalSupply,getBalances,subscribeIns,redemptionIns} = require("./normal-scripts.js");
 
 async function main() {
@@ -30,7 +30,7 @@ async function main() {
 
 
 	// 铸币
-	await coin(pool.address, NESTContract.address, USDTPToken, ETH("4"), "70", "20000000000000000");
+	await coin(pool.address, NESTContract.address, USDTPToken, ETH("4"), "50", "20000000000000000");
 	const ledger = await getLedger(pool.address, USDTPToken, NESTContract.address);
 
 	// 增加抵押
@@ -41,9 +41,15 @@ async function main() {
 	await decrease(pool.address, NESTContract.address, USDTPToken, ETH("1"), "20000000000000000");
 	await getLedger(pool.address, USDTPToken, NESTContract.address);
 	await ERC20Balance(USDTPToken, insurancePool.address);
-	// 赎回
-	await redemption(pool.address, NESTContract.address, USDTPToken, ETH("1"), "20000000000000000");
+	// 新增铸币
+	await increaseCoinage(pool.address, NESTContract.address, USDTPToken, ETH("1"), "20000000000000000");
 	await getLedger(pool.address, USDTPToken, NESTContract.address);
+	// 减少铸币
+	await reducedCoinage(pool.address, NESTContract.address, USDTPToken, ETH("1"), "20000000000000000");
+	await getLedger(pool.address, USDTPToken, NESTContract.address);
+	// 赎回
+	// await redemptionAll(pool.address, NESTContract.address, USDTPToken);
+	// await getLedger(pool.address, USDTPToken, NESTContract.address);
 	await ERC20Balance(USDTPToken, insurancePool.address);
 
 	// 认购保险

@@ -156,9 +156,10 @@ contract MortgagePool {
     	               address mortgageToken) 
     	public view returns(uint256 mortgageAssets, 
     		                uint256 parassetAssets, 
-    		                uint256 blockHeight) {
+    		                uint256 blockHeight,
+                            uint256 rate) {
     	PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
-    	return (pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight);
+    	return (pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
     }
 
     // 查看管理员地址
@@ -318,10 +319,11 @@ contract MortgagePool {
         pLedger.parassetAssets = pLedger.parassetAssets.add(pTokenAmount);
         pLedger.blockHeight = block.number;
         uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
+        require(mortgageRate < maxRate[mortgageToken].mul(1 ether).div(100), "Log:MortgagePool:!maxRate");
         pLedger.rate = mortgageRate;
     }
     
-    // 补充抵押
+    // 新增抵押
     // mortgageToken:抵押资产地址
     // pToken:p资产地址
     // amount:抵押资产数量
@@ -352,10 +354,11 @@ contract MortgagePool {
     	pLedger.mortgageAssets = pLedger.mortgageAssets.add(amount);
     	pLedger.blockHeight = block.number;
         uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
+        require(mortgageRate < maxRate[mortgageToken].mul(1 ether).div(100), "Log:MortgagePool:!maxRate");
         pLedger.rate = mortgageRate;
     }
 
-    // 减少抵押
+    // 提取资产
     // mortgageToken:抵押资产地址
     // pToken:p资产地址
     // amount:抵押资产数量
@@ -390,11 +393,71 @@ contract MortgagePool {
     	}
     }
 
+    // 新增铸币
+    // mortgageToken:抵押资产地址
+    // pToken:p资产地址
+    // amount:新增铸币数量
+    // 注意：mortgageToken为0X0时，抵押资产为ETH
+    function increaseCoinage(address mortgageToken,
+                             address pToken,
+                             uint256 amount) public payable {
+        require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+        PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+        // 获取价格
+        (uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, pTokenToUnderlying[pToken]);
+        if (pLedger.parassetAssets > 0 && block.number > pLedger.blockHeight && pLedger.blockHeight != 0) {
+            // 结算稳定费
+            uint256 fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
+            // 转入p资产
+            ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
+            // 消除负账户
+            insurancePool.eliminate(pToken, pTokenToUnderlying[pToken]);
+        }
+        uint256 priceFee = getPriceFee(mortgageToken, pTokenToUnderlying[pToken]);
+        require(msg.value == priceFee, "Log:MortgagePool:msg.value!=priceFee");
+        pLedger.parassetAssets = pLedger.parassetAssets.add(amount);
+        pLedger.blockHeight = block.number;
+        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
+        pLedger.rate = mortgageRate;
+        require(mortgageRate < maxRate[mortgageToken].mul(1 ether).div(100), "Log:MortgagePool:!maxRate");
+        PToken(pToken).issuance(amount, address(msg.sender));
+    }
+
+    // 减少铸币
+    // mortgageToken:抵押资产地址
+    // pToken:p资产地址
+    // amount:减少铸币数量
+    // 注意：mortgageToken为0X0时，抵押资产为ETH
+    function reducedCoinage(address mortgageToken,
+                            address pToken,
+                            uint256 amount) public payable {
+        require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+        PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+        // 获取价格
+        (uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, pTokenToUnderlying[pToken]);
+        if (pLedger.parassetAssets > 0 && block.number > pLedger.blockHeight && pLedger.blockHeight != 0) {
+            // 结算稳定费
+            uint256 fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
+            // 转入p资产
+            ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), amount.add(fee));
+            // 消除负账户
+            insurancePool.eliminate(pToken, pTokenToUnderlying[pToken]);
+        }
+        uint256 priceFee = getPriceFee(mortgageToken, pTokenToUnderlying[pToken]);
+        require(msg.value == priceFee, "Log:MortgagePool:msg.value!=priceFee");
+        pLedger.parassetAssets = pLedger.parassetAssets.sub(amount);
+        pLedger.blockHeight = block.number;
+        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
+        pLedger.rate = mortgageRate;
+        // 销毁p资产
+        insurancePool.destroyPToken(pToken, amount, pTokenToUnderlying[pToken]);
+    }
+
     // 赎回抵押
     // mortgageToken:抵押资产地址
     // pToken:p资产地址
     // amount:抵押资产数量
-    // 注意：mortgageToken为0X0时，抵押资产为ETH。优先赎回标的资产，标的资产不够时赎回p资产
+    // 注意：mortgageToken为0X0时，抵押资产为ETH。
     function redemption(address mortgageToken, 
                         address pToken, 
                         uint256 amount) public payable {
@@ -433,6 +496,37 @@ contract MortgagePool {
     	} else {
     		payEth(address(msg.sender), amount);
     	}
+    }
+
+    // 赎回全部抵押
+    // mortgageToken:抵押资产地址
+    // pToken:p资产地址
+    // 注意：mortgageToken为0X0时，抵押资产为ETH。
+    function redemptionAll(address mortgageToken, address pToken) public payable {
+        require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+        PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+        if (pLedger.parassetAssets > 0 && block.number > pLedger.blockHeight && pLedger.blockHeight != 0) {
+            // 结算稳定费
+            uint256 fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
+            // 转入p资产
+            ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), pLedger.parassetAssets.add(fee));
+            // 消除负账户
+            insurancePool.eliminate(pToken, pTokenToUnderlying[pToken]);
+        }
+        // 销毁p资产
+        insurancePool.destroyPToken(pToken, pLedger.parassetAssets, pTokenToUnderlying[pToken]);
+        // 更新信息
+        uint256 mortgageAssetsAmount = pLedger.mortgageAssets;
+        pLedger.mortgageAssets = 0;
+        pLedger.parassetAssets = 0;
+        pLedger.blockHeight = 0;
+        pLedger.rate = 0;
+        // 转出抵押资产
+        if (mortgageToken != address(0x0)) {
+            ERC20(mortgageToken).safeTransfer(address(msg.sender), mortgageAssetsAmount);
+        } else {
+            payEth(address(msg.sender), mortgageAssetsAmount);
+        }
     }
 
     // 清算
