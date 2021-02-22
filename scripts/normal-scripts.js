@@ -233,6 +233,14 @@ exports.getLedger = async function (mortgagePool, PToken, MToken) {
     return [ledger[0], ledger[1], ledger[2], ledger[3]];
 }
 
+// 查看实时数据
+exports.getInfoRealTime = async function (mortgagePool, MToken, PToken, tokenPrice, uTokenPrice) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const info = await pool.getInfoRealTime(MToken, PToken, tokenPrice, uTokenPrice);
+    console.log(">>>>>> info =", info[0].toString(), info[1].toString(), info[2].toString(), info[3].toString());
+    return [info[0], info[1], info[2], info[3]];
+}
+
 // 查看稳定费
 exports.getFee = async function (mortgagePool, mortgageAssets, parassetAssets, blockHeight, tokenPrice, pTokenPrice) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);

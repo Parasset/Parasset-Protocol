@@ -4,7 +4,7 @@ const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,setIns
 	setPrice,setMaxRate,setQuaryAddress,
 	deployMortgagePool,approve,create,
 	getTokenInfo,allow,coin,getLedger,supplement,
-	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,
+	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,getInfoRealTime,
 	exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,getTotalSupply,getBalances,subscribeIns,redemptionIns} = require("./normal-scripts.js");
 
 async function main() {
@@ -56,6 +56,7 @@ async function main() {
 	// 减少铸币
 	await reducedCoinage(pool.address, ETHAddress, USDTPToken, ETH("1"), "10000000000000000");
 	await getLedger(pool.address, USDTPToken, ETHAddress);
+	await getInfoRealTime(pool.address, ETHAddress, USDTPToken, ETH("1"), USDT("1"));
 	// 赎回
 	// await redemptionAll(pool.address, ETHAddress, USDTPToken);
 	// await getLedger(pool.address, USDTPToken, ETHAddress);
