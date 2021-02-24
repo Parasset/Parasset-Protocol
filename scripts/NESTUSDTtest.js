@@ -55,9 +55,9 @@ async function main() {
 	// 认购保险
 	await approve(USDTContract.address, insurancePool.address, USDT("999999"));
 	await approve(USDTPToken, insurancePool.address, ETH("999999"));
-	await getBalances(insurancePool.address, accounts[0].address);
+	await getBalances(insurancePool.address, USDTContract.address, accounts[0].address);
 	await subscribeIns(insurancePool.address, USDTContract.address, USDT(2));
-	await getBalances(insurancePool.address, accounts[0].address);
+	await getBalances(insurancePool.address, USDTContract.address, accounts[0].address);
 	// 兑换
 	await ERC20Balance(USDTPToken, insurancePool.address);
 	await exchangePTokenToUnderlying(insurancePool.address, USDTPToken, ETH("1"));
@@ -67,15 +67,15 @@ async function main() {
 	await exchangeUnderlyingToPToken(insurancePool.address, USDTContract.address, USDT("1"));
 	await ERC20Balance(USDTContract.address, insurancePool.address);
 
-	// 赎回保险
+	// 赎回保险--本地私链测试时注释掉，被冻结无法测试
 	await ERC20Balance(USDTContract.address, insurancePool.address);
 	await ERC20Balance(USDTContract.address, accounts[0].address);
-	await getBalances(insurancePool.address, accounts[0].address);
+	await getBalances(insurancePool.address, USDTContract.address, accounts[0].address);
 	await ERC20Balance(USDTPToken, insurancePool.address);
 	await redemptionIns(insurancePool.address, USDTContract.address, ETH("2"));
 	await ERC20Balance(USDTContract.address, insurancePool.address);
 	await ERC20Balance(USDTContract.address, accounts[0].address);
-	await getBalances(insurancePool.address, accounts[0].address);
+	await getBalances(insurancePool.address, USDTContract.address, accounts[0].address);
 	await ERC20Balance(USDTPToken, insurancePool.address);
 }
 

@@ -170,6 +170,13 @@ exports.redemptionAll = async function(mortgagePool, MToken, PToken) {
 	console.log(`>>> [redemption SUCCESS]`);
 }
 
+// 清算
+exports.liquidation = async function(mortgagePool, MToken, PToken, account, valueNum) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+	const supplement = await pool.liquidation(MToken, PToken, account, {value:valueNum});
+	console.log(`>>> [liquidation SUCCESS]`);
+}
+
 // 兑换
 exports.exchangePTokenToUnderlying = async function(insurancePool, PToken, amount) {
 	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
@@ -218,9 +225,9 @@ exports.getTotalSupply = async function (insurancePool, token) {
     return totalSupply;
 }
 // 查询个人LP
-exports.getBalances = async function (insurancePool, token) {
+exports.getBalances = async function (insurancePool, token, add) {
 	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
-    const balances = await pool.getBalances(token);
+    const balances = await pool.getBalances(token, add);
     console.log(">>>>>> balances =", balances.toString());
     return balances;
 }
@@ -234,9 +241,9 @@ exports.getLedger = async function (mortgagePool, PToken, MToken) {
 }
 
 // 查看实时数据
-exports.getInfoRealTime = async function (mortgagePool, MToken, PToken, tokenPrice, uTokenPrice) {
+exports.getInfoRealTime = async function (mortgagePool, MToken, PToken, tokenPrice, uTokenPrice, maxRateNum) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-    const info = await pool.getInfoRealTime(MToken, PToken, tokenPrice, uTokenPrice);
+    const info = await pool.getInfoRealTime(MToken, PToken, tokenPrice, uTokenPrice, maxRateNum);
     console.log(">>>>>> info =", info[0].toString(), info[1].toString(), info[2].toString(), info[3].toString());
     return [info[0], info[1], info[2], info[3]];
 }
@@ -246,6 +253,14 @@ exports.getFee = async function (mortgagePool, mortgageAssets, parassetAssets, b
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
 	const getFee = await pool.getFee(mortgageAssets, parassetAssets, blockHeight, tokenPrice, pTokenPrice);
 	console.log(">>>>>> FEE =", getFee.toString());
+}
+
+// 查询保险负账户
+exports.getInsNegative = async function(insurancePool, token) {
+	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+    const num = await pool.getInsNegative(token);
+    console.log(">>>>>> InsNegative =", num.toString());
+    return num;
 }
 
 // 查询ERC20余额

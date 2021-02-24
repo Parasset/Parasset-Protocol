@@ -119,11 +119,13 @@ contract MortgagePool {
     // pToken:平行资产地址
     // tokenPrice:抵押资产价格数量
     // uTokenPrice:标的资产价格数量
+    // maxRateNum:计算参照的最大抵押率
     // 返回：稳定费、抵押率、最大可减少抵押资产数量、最大可新增铸币数量
     function getInfoRealTime(address mortgageToken, 
                              address pToken, 
                              uint256 tokenPrice, 
-                             uint256 uTokenPrice) public view 
+                             uint256 uTokenPrice,
+                             uint256 maxRateNum) public view 
                              returns(uint256 fee, uint256 mortgageRate, uint256 maxSubM, uint256 maxAddP) {
         PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
         fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
@@ -132,7 +134,6 @@ contract MortgagePool {
                                                pLedger.parassetAssets.add(fee), 
                                                tokenPrice,
                                                pTokenPrice);
-        uint256 maxRateNum = getMaxRate(mortgageToken);
         if (mortgageRate.mul(100).div(1 ether) >= maxRateNum) {
             maxSubM = 0;
             maxAddP = 0;
@@ -161,7 +162,7 @@ contract MortgagePool {
     function getDecimalConversion(address inputToken, 
     	                          uint256 inputTokenAmount, 
     	                          address outputToken) public view returns(uint256) {
-    	uint256 inputTokenDec = 6;
+    	uint256 inputTokenDec = 18;
     	uint256 outputTokenDec = 18;
     	if (inputToken != address(0x0)) {
     		inputTokenDec = IERC20(inputToken).decimals();
@@ -617,7 +618,7 @@ contract MortgagePool {
         private
         returns (uint256 tokenPrice, 
                  uint256 pTokenPrice) {
-        uint256 priceFee = 0.01 ether;
+        uint256 priceFee = getPriceSingleFee();
         if (token == address(0x0)) {
             (,,uint256 avg,,) = quary.queryPriceAvgVola{value:priceFee}(uToken, address(msg.sender));
             return (1 ether, getDecimalConversion(uToken, avg, underlyingToPToken[uToken]));

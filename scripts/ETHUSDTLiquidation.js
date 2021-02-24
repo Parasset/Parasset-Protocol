@@ -4,7 +4,7 @@ const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,setIns
 	setPrice,setMaxRate,setQuaryAddress,
 	deployMortgagePool,approve,create,
 	getTokenInfo,allow,coin,getLedger,supplement,
-	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,getInfoRealTime,
+	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,getInfoRealTime,liquidation,getInsNegative,
 	exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,getTotalSupply,getBalances,subscribeIns,redemptionIns} = require("./normal-scripts.js");
 
 async function main() {
@@ -57,35 +57,34 @@ async function main() {
 	await reducedCoinage(pool.address, ETHAddress, USDTPToken, ETH("1"), "10000000000000000");
 	await getLedger(pool.address, USDTPToken, ETHAddress);
 	await getInfoRealTime(pool.address, ETHAddress, USDTPToken, ETH("1"), USDT("1"), "65");
-	// 赎回
-	// await redemptionAll(pool.address, ETHAddress, USDTPToken);
-	// await getLedger(pool.address, USDTPToken, ETHAddress);
 
 	// 认购保险
 	await approve(USDTContract.address, insurancePool.address, USDT("999999"));
 	await approve(USDTPToken, insurancePool.address, ETH("999999"));
-	await getBalances(insurancePool.address, USDTContract.address, accounts[0].address);
 	await subscribeIns(insurancePool.address, USDTContract.address, USDT(2));
-	await getBalances(insurancePool.address, USDTContract.address, accounts[0].address);
+
+	// 测试清算
+	// 修改价格，跌10倍
+	await setPrice(NestQuery.address,USDTContract.address, "100000");
+	await getInfoRealTime(pool.address, ETHAddress, USDTPToken, ETH("1"), "100000", "65");
+
+	await getInsNegative(insurancePool.address, USDTContract.address);
+	await ERC20Balance(USDTPToken, accounts[0].address);
+	await liquidation(pool.address, ETHAddress, USDTPToken, accounts[0].address, "10000000000000000");
+	await getInsNegative(insurancePool.address, USDTContract.address);
+	await ERC20Balance(USDTPToken, accounts[0].address);
+
+	
 	// 兑换
-	await ERC20Balance(USDTPToken, insurancePool.address);
+	await getInsNegative(insurancePool.address, USDTContract.address);
+	await ERC20Balance(USDTPToken, accounts[0].address);
+	await ERC20Balance(USDTContract.address, accounts[0].address);
 	await exchangePTokenToUnderlying(insurancePool.address, USDTPToken, ETH("1"));
-	await ERC20Balance(USDTPToken, insurancePool.address);
-
-	await ERC20Balance(USDTContract.address, insurancePool.address);
-	await exchangeUnderlyingToPToken(insurancePool.address, USDTContract.address, USDT("1"));
-	await ERC20Balance(USDTContract.address, insurancePool.address);
-
-	// 赎回保险
-	await ERC20Balance(USDTContract.address, insurancePool.address);
+	await getInsNegative(insurancePool.address, USDTContract.address);
+	await ERC20Balance(USDTPToken, accounts[0].address);
 	await ERC20Balance(USDTContract.address, accounts[0].address);
-	await getBalances(insurancePool.address, USDTContract.address, accounts[0].address);
-	await ERC20Balance(USDTPToken, insurancePool.address);
-	await redemptionIns(insurancePool.address, USDTContract.address, ETH("2"));
-	await ERC20Balance(USDTContract.address, insurancePool.address);
-	await ERC20Balance(USDTContract.address, accounts[0].address);
-	await getBalances(insurancePool.address, USDTContract.address, accounts[0].address);
-	await ERC20Balance(USDTPToken, insurancePool.address);
+
+
 }
 
 // We recommend this pattern to be able to use async/await everywhere

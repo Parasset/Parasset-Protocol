@@ -27,9 +27,9 @@ contract InsurancePoolV2 {
 	// 最新赎回节点, 标的资产地址=>最新赎回时间
     mapping(address=>uint256) latestTime;
 	// 赎回周期
-	uint256 redemptionCycle = 1 days;
+	uint256 redemptionCycle = 5 minutes;
 	// 等待周期
-	uint256 waitCycle = 90 days;
+	uint256 waitCycle = 10 minutes;
 	// 冻结保险份额,用户地址=>标的资产地址=>冻结份额数据
 	mapping(address=>mapping(address=>Frozen)) frozenIns;
 	struct Frozen {
@@ -74,8 +74,8 @@ contract InsurancePoolV2 {
     }
 
     // 查询个人LP
-    function getBalances(address token) public view returns(uint256) {
-        return balances[address(msg.sender)][token];
+    function getBalances(address token, address add) public view returns(uint256) {
+        return balances[add][token];
     }
 
     // 查询保险池地址
@@ -88,19 +88,42 @@ contract InsurancePoolV2 {
         return latestTime[token];
     }
 
+    // 查询赎回时间段-实时
+    function getRedemptionTime(address token) public view returns(uint256 startTime, uint256 endTime) {
+        uint256 time = latestTime[token];
+        if (now > time) {
+            uint256 subTime = now.sub(time).div(waitCycle);
+            startTime = time.add(waitCycle.mul(uint256(1).add(subTime)));
+        } else {
+            startTime = time;
+        }
+        endTime = startTime.add(redemptionCycle);
+    }
+
     // 查询被冻结份额及解冻时间
-    function getFrozenIns(address token) public view returns(uint256, uint256) {
-        Frozen memory frozenInfo = frozenIns[address(msg.sender)][token];
+    function getFrozenIns(address token, address add) public view returns(uint256, uint256) {
+        Frozen memory frozenInfo = frozenIns[add][token];
         return (frozenInfo.amount, frozenInfo.time);
     }
 
     // 查询被冻结份额实时（in time）
-    function getFrozenInsInTime(address token) public view returns(uint256) {
-        Frozen memory frozenInfo = frozenIns[address(msg.sender)][token];
+    function getFrozenInsInTime(address token, address add) public view returns(uint256) {
+        Frozen memory frozenInfo = frozenIns[add][token];
         if (now > frozenInfo.time) {
             return 0;
         }
         return frozenInfo.amount;
+    }
+
+    // 查询可赎回份额实时
+    function getRedemptionAmount(address token, address add) public view returns (uint256) {
+        Frozen memory frozenInfo = frozenIns[add][token];
+        uint256 balanceSelf = balances[add][token];
+        if (now > frozenInfo.time) {
+            return balanceSelf;
+        } else {
+            return balanceSelf.sub(frozenInfo.amount);
+        }
     }
 
 	// 小数转换
@@ -110,7 +133,7 @@ contract InsurancePoolV2 {
     function getDecimalConversion(address inputToken, 
     	                          uint256 inputTokenAmount, 
     	                          address outputToken) public view returns(uint256) {
-    	uint256 inputTokenDec = 6;
+    	uint256 inputTokenDec = 18;
     	uint256 outputTokenDec = 18;
     	if (inputToken != address(0x0)) {
     		inputTokenDec = IERC20(inputToken).decimals();
@@ -184,11 +207,11 @@ contract InsurancePoolV2 {
         uint256 tokenBalance;
         address pToken = mortgagePool.getUnderlyingToPToken(token);
         require(pToken != address(0x0), "Log:InsurancePool:!pToken");
-    	// updateLatestTime(token);
-    	// Frozen storage frozenInfo = frozenIns[address(msg.sender)][token];
-    	// if (now > frozenInfo.time) {
-    	// 	frozenInfo.amount = 0;
-    	// }
+    	updateLatestTime(token);
+    	Frozen storage frozenInfo = frozenIns[address(msg.sender)][token];
+    	if (now > frozenInfo.time) {
+    		frozenInfo.amount = 0;
+    	}
     	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
     	if (token != address(0x0)) {
     		tokenBalance = ERC20(token).balanceOf(address(this));
@@ -196,10 +219,10 @@ contract InsurancePoolV2 {
     		require(msg.value == amount, "Log:InsurancePool:!msg.value");
     		tokenBalance = address(this).balance;
     	}
-    	uint256 allValue = tokenBalance.add(pTokenBalance).sub(insNegative[token]);
     	uint256 insAmount = getDecimalConversion(token, amount, pToken);
     	uint256 insTotal = totalSupply[token];
-    	if (insTotal != 0) {
+    	if (insTotal != 0 && tokenBalance.add(pTokenBalance) > insNegative[token]) {
+            uint256 allValue = tokenBalance.add(pTokenBalance).sub(insNegative[token]);
     		insAmount = getDecimalConversion(token, amount, pToken).mul(insTotal).div(allValue);
     	}
     	// 转入标的资产
@@ -210,8 +233,8 @@ contract InsurancePoolV2 {
     	// 增发份额
     	issuance(token, insAmount, address(msg.sender));
     	// 冻结保险份额
-    	// frozenInfo.amount = frozenInfo.amount.add(insAmount);
-    	// frozenInfo.time = latestTime[token];
+    	frozenInfo.amount = frozenInfo.amount.add(insAmount);
+    	frozenInfo.time = latestTime[token];
     }
 
     // 赎回保险
@@ -221,12 +244,12 @@ contract InsurancePoolV2 {
     	                   uint256 amount) public {
         uint256 tokenBalance;
         address pToken = mortgagePool.getUnderlyingToPToken(token);
-    	// updateLatestTime(token);
-    	// require(now >= latestTime[token].sub(waitCycle) && now <= latestTime[token].sub(waitCycle).add(redemptionCycle), "Log:InsurancePool:!time");
-    	// Frozen storage frozenInfo = frozenIns[address(msg.sender)][token];
-    	// if (now > frozenInfo.time) {
-    	// 	frozenInfo.amount = 0;
-    	// }
+    	updateLatestTime(token);
+    	require(now >= latestTime[token].sub(waitCycle) && now <= latestTime[token].sub(waitCycle).add(redemptionCycle), "Log:InsurancePool:!time");
+    	Frozen storage frozenInfo = frozenIns[address(msg.sender)][token];
+    	if (now > frozenInfo.time) {
+    		frozenInfo.amount = 0;
+    	}
     	require(pToken != address(0x0), "Log:InsurancePool:!pToken");
     	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
     	if (token != address(0x0)) {
@@ -238,6 +261,10 @@ contract InsurancePoolV2 {
                            .sub(getDecimalConversion(pToken, insNegative[token], token));
     	uint256 insTotal = totalSupply[token];
     	uint256 underlyingAmount = amount.mul(allValue).div(insTotal);
+
+        // 销毁份额
+        destroy(token, amount, address(msg.sender));
+        require(balances[address(msg.sender)][pToken] >= frozenInfo.amount, "Log:InsurancePool:frozen");
     	
     	// 转出标的资产
     	if (token != address(0x0)) {
@@ -257,9 +284,6 @@ contract InsurancePoolV2 {
                                            underlyingAmount.sub(tokenBalance));
             }
     	}
-    	// 销毁份额
-    	destroy(token, amount, address(msg.sender));
-        // require(balances[address(msg.sender)][pToken] >= frozenInfo.amount, "Log:InsurancePool:frozen");
     }
 
     // 销毁P资产，更新负账户
@@ -311,9 +335,10 @@ contract InsurancePoolV2 {
 
     // 更新赎回节点
     function updateLatestTime(address token) public {
-    	if (now > latestTime[token]) {
-    		uint256 subTime = now.sub(latestTime[token]).div(waitCycle);
-    		latestTime[token] = latestTime[token].add(waitCycle.mul(uint256(1).add(subTime)));
+        uint256 time = latestTime[token];
+    	if (now > time) {
+    		uint256 subTime = now.sub(time).div(waitCycle);
+    		latestTime[token] = time.add(waitCycle.mul(uint256(1).add(subTime)));
     	}
     }
     // 销毁份额
