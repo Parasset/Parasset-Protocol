@@ -1,8 +1,8 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
-const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,setInsurancePool,setMortgagePool,
-	setPrice,setMaxRate,setQuaryAddress,
-	deployMortgagePool,approve,create,
+const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,depolyFactory,setInsurancePool,setMortgagePool,
+	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,
+	deployMortgagePool,approve,createPtoken,setInfo,getPTokenAddress,
 	getTokenInfo,allow,coin,getLedger,supplement,
 	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,
 	exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,getTotalSupply,getBalances,subscribeIns,redemptionIns} = require("./normal-scripts.js");
@@ -12,15 +12,19 @@ async function main() {
 	// 准备工作
 	USDTContract = await deployUSDT();
 	NESTContract = await deployNEST();
+	factory = await depolyFactory();
 	NestQuery = await deployNestQuery();
-	pool = await deployMortgagePool();
-	insurancePool = await deployInsurancePool();
+	pool = await deployMortgagePool(factory.address);
+	insurancePool = await deployInsurancePool(factory.address);
 	await approve(USDTContract.address, pool.address, USDT("999999"));
 	await approve(NESTContract.address, pool.address, ETH("999999"));
 	await setInsurancePool(pool.address, insurancePool.address);
 	await setMortgagePool(insurancePool.address, pool.address);
-	await create(pool.address, USDTContract.address, "USDT");
-	const USDTPToken = await getTokenInfo(pool.address, insurancePool.address, USDTContract.address);
+	await createPtoken(factory.address, "USDT");
+	await setPTokenOperator(factory.address, pool.address, "1");
+	await setPTokenOperator(factory.address, insurancePool.address, "1");
+	const USDTPToken = await getPTokenAddress(factory.address, "0");
+	await setInfo(pool.address, USDTContract.address, USDTPToken);
 	await allow(pool.address, USDTPToken, NESTContract.address);
 	await setMaxRate(pool.address, NESTContract.address, "70");
 	await setPrice(NestQuery.address,NESTContract.address, ETH("1"));

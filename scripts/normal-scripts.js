@@ -50,10 +50,21 @@ exports.setPrice = async function (quaryAddress, token, avg) {
 	console.log(`>>> [SETPRICE]: ${token} => ${avg}`);
 }
 
+// 部署工厂合约
+exports.depolyFactory = async function() {
+	const factory = await hre.ethers.getContractFactory("PTokenFactory");
+	const contract = await factory.deploy();
+	await contract.deployed();
+	const tx = contract.deployTransaction;
+	await tx.wait(1);
+	console.log(`>>> [DPLY]: factory deployed, address=${contract.address}, block=${tx.blockNumber}`);
+	return contract;
+}
+
 // 部署抵押池
-exports.deployMortgagePool = async function () {
+exports.deployMortgagePool = async function (factory) {
 	const MortgagePool = await hre.ethers.getContractFactory("MortgagePool");
-    const pool = await MortgagePool.deploy();
+    const pool = await MortgagePool.deploy(factory);
     await pool.deployed();
     const tx = pool.deployTransaction;
     await tx.wait(1);
@@ -62,9 +73,9 @@ exports.deployMortgagePool = async function () {
 }
 
 // 部署保险池
-exports.deployInsurancePool = async function () {
-	const InsurancePool = await hre.ethers.getContractFactory("InsurancePoolV2");
-    const pool = await InsurancePool.deploy();
+exports.deployInsurancePool = async function (factory) {
+	const InsurancePool = await hre.ethers.getContractFactory("InsurancePool");
+    const pool = await InsurancePool.deploy(factory);
     await pool.deployed();
     const tx = pool.deployTransaction;
     await tx.wait(1);
@@ -82,7 +93,7 @@ exports.setInsurancePool = async function (mortgagePool, add) {
 
 // 保险合约-设置抵押池
 exports.setMortgagePool = async function (insurancePool, add) {
-	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
     const set = await pool.setMortgagePool(add);
     await set.wait(1);
     console.log(`>>> [setMortgagePool SUCCESS]`);
@@ -96,11 +107,18 @@ exports.approve = async function (token, to, value) {
 }
 
 // 创建
-exports.create = async function (mortgagePool ,token, name) {
-	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-    const create = await pool.create(token, name);
+exports.createPtoken = async function (factory, name) {
+	const fac = await ethers.getContractAt("PTokenFactory", factory);
+    const create = await fac.createPtoken(name);
     await create.wait(1);
     console.log(`>>> [CREATE SUCCESS]`);
+}
+
+// 设置p资产与标的资产
+exports.setInfo = async function (mortgagePool, token, pToken) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+	const setInfo = await pool.setInfo(token, pToken);
+    console.log(`>>> [setInfo SUCCESS]`);
 }
 
 // 允许抵押
@@ -122,6 +140,14 @@ exports.setMaxRate = async function (mortgagePool, MToken, rate) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const maxRate = await pool.setMaxRate(MToken, rate);
     console.log(`>>> [setMaxRate SUCCESS]`);
+}
+
+// 设置可操作ptoken地址
+exports.setPTokenOperator = async function(factory, add, allow) {
+	const fac = await ethers.getContractAt("PTokenFactory", factory);
+    const Operator = await fac.setPTokenOperator(add, allow);
+    await Operator.wait(1);
+    console.log(`>>> [SET SUCCESS]`);
 }
 
 // 抵押铸币
@@ -179,26 +205,26 @@ exports.liquidation = async function(mortgagePool, MToken, PToken, account, valu
 
 // 兑换
 exports.exchangePTokenToUnderlying = async function(insurancePool, PToken, amount) {
-	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
 	const exchange = await pool.exchangePTokenToUnderlying(PToken, amount);
 	console.log(`>>> [exchange SUCCESS], exchange:${PToken}->${amount}`);
 }
 exports.exchangeUnderlyingToPToken = async function(insurancePool, token, amount) {
-	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
 	const exchange = await pool.exchangeUnderlyingToPToken(token, amount);
 	console.log(`>>> [exchange SUCCESS], exchange:${token}->${amount}`);
 }
 
 // 认购保险
 exports.subscribeIns = async function(insurancePool, token, amount) {
-	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
 	const subscribe = await pool.subscribeIns(token, amount);
 	console.log(`>>> [subscribeIns SUCCESS], subscribeIns:${token}->${amount}`);
 }
 
 // 赎回保险
 exports.redemptionIns = async function(insurancePool, token, amount) {
-	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
 	const redemption = await pool.redemptionIns(token, amount);
 	console.log(`>>> [redemption SUCCESS], redemption:${token}->${amount}`);
 }
@@ -219,14 +245,14 @@ exports.getInsurancePool = async function(mortgagePool) {
 
 // 查询LP总量
 exports.getTotalSupply = async function (insurancePool, token) {
-	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
     const totalSupply = await pool.getTotalSupply(token);
     console.log(">>>>>> totalSupply =", totalSupply.toString());
     return totalSupply;
 }
 // 查询个人LP
 exports.getBalances = async function (insurancePool, token, add) {
-	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
     const balances = await pool.getBalances(token, add);
     console.log(">>>>>> balances =", balances.toString());
     return balances;
@@ -257,7 +283,7 @@ exports.getFee = async function (mortgagePool, mortgageAssets, parassetAssets, b
 
 // 查询保险负账户
 exports.getInsNegative = async function(insurancePool, token) {
-	const pool = await ethers.getContractAt("InsurancePoolV2", insurancePool);
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
     const num = await pool.getInsNegative(token);
     console.log(">>>>>> InsNegative =", num.toString());
     return num;
@@ -276,4 +302,12 @@ exports.getTokenInfo = async function (mortgagePool, insurancePool ,token) {
     const pToken = await pool.underlyingToPToken(token);
     console.log(`>>> pTokenAddress=${pToken}`);
     return pToken;
+}
+
+// 查看p资产地址
+exports.getPTokenAddress = async function (factory, index) {
+	const fac = await ethers.getContractAt("PTokenFactory", factory);
+    const address = await fac.getPTokenAddress(index);
+    console.log(`>>> pTokenAddress=${address}`);
+    return address;
 }

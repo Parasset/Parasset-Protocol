@@ -8,8 +8,9 @@ import "./lib/AddressPayable.sol";
 import "./iface/IERC20.sol";
 import "./iface/IMortgagePool.sol";
 import "./PToken.sol";
+import "./iface/IPTokenFactory.sol";
 
-contract InsurancePoolV2 {
+contract InsurancePool {
 	using SafeMath for uint256;
 	using address_make_payable for address;
 	using SafeERC20 for ERC20;
@@ -22,8 +23,6 @@ contract InsurancePoolV2 {
 	mapping(address=>uint256) totalSupply;
 	// 个人LP,个人地址=>标的资产地址=>LP数量
 	mapping(address=>mapping(address=>uint256)) balances;
-    // 保险池地址
-    IMortgagePool mortgagePool;
 	// 最新赎回节点, 标的资产地址=>最新赎回时间
     mapping(address=>uint256) latestTime;
 	// 赎回周期
@@ -36,12 +35,21 @@ contract InsurancePoolV2 {
 		uint256 amount;							//	冻结数量
 		uint256 time;							//  冻结时间
 	}
+    // 保险池地址
+    IMortgagePool mortgagePool;
+    // 工厂合约地址
+    IPTokenFactory pTokenFactory;
+    // 状态
+    uint8 public flag;      // = 0: 停止
+                            // = 1: 启动
 
     event Destroy(address token, uint256 amount, address account);
     event Issuance(address token, uint256 amount, address account);
 
-	constructor () public {
-        governance = msg.sender;
+	constructor (address factoryAddress) public {
+        pTokenFactory = IPTokenFactory(factoryAddress);
+        governance = pTokenFactory.getGovernance();
+        flag = 0;
     }
 
 	//---------modifier---------
@@ -53,6 +61,11 @@ contract InsurancePoolV2 {
 
     modifier onlyMortgagePool() {
         require(msg.sender == address(mortgagePool), "Log:InsurancePool:!mortgagePool");
+        _;
+    }
+
+    modifier whenActive() {
+        require(flag == 1, "Log:InsurancePool:!active");
         _;
     }
 
@@ -147,16 +160,14 @@ contract InsurancePoolV2 {
 
     //---------governance----------
 
+    // 设置状态
+    function setFlag(uint8 num) public onlyGovernance {
+        flag = num;
+    }
+
     // 设置抵押池地址
     function setMortgagePool(address add) public onlyGovernance {
     	mortgagePool = IMortgagePool(add);
-    }
-
-    // 设置管理员
-    function loadGovernance() public {
-    	address add = mortgagePool.getGovernance();
-    	require(add != address(0x0), "Log:InsurancePool:0x0");
-    	governance = add;
     }
 
     // 设置最新赎回节点
@@ -166,11 +177,16 @@ contract InsurancePoolV2 {
 
     //---------transaction---------
 
+    // 设置管理员
+    function setGovernance() public {
+        governance = pTokenFactory.getGovernance();
+    }
+
 	// 兑换，p资产换标的资产
     // pToken:pToken地址
     // amount:pToken数量
     function exchangePTokenToUnderlying(address pToken, 
-    	                                uint256 amount) public {
+    	                                uint256 amount) public whenActive {
     	uint256 fee = amount.mul(2).div(1000);
     	ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), amount);
         address underlyingToken = mortgagePool.getPTokenToUnderlying(pToken);
@@ -187,7 +203,7 @@ contract InsurancePoolV2 {
     // token:标的资产地址
     // amount:标的资产数量
     function exchangeUnderlyingToPToken(address token, 
-    	                                uint256 amount) public payable {
+    	                                uint256 amount) public payable whenActive {
     	uint256 fee = amount.mul(2).div(1000);
     	if (token != address(0x0)) {
     		require(msg.value == 0, "Log:InsurancePool:msg.value!=0");
@@ -196,14 +212,21 @@ contract InsurancePoolV2 {
     		require(msg.value == amount, "Log:InsurancePool:!msg.value");
     	}
     	address pToken = mortgagePool.getUnderlyingToPToken(token);
-    	ERC20(pToken).safeTransfer(address(msg.sender), getDecimalConversion(token, amount.sub(fee), pToken));
+        uint256 pTokenAmount = getDecimalConversion(token, amount.sub(fee), pToken);
+        uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
+        if (pTokenBalance < pTokenAmount) {
+            uint256 subNum = pTokenAmount.sub(pTokenBalance);
+            PToken(pToken).issuance(subNum, address(this));
+            insNegative[token] = insNegative[token].add(subNum);
+        }
+    	ERC20(pToken).safeTransfer(address(msg.sender), pTokenAmount);
     }
 
     // 认购保险
     // token:标的资产地址，USDT、ETH...
     // amount:标的资产数量
     function subscribeIns(address token, 
-    	                  uint256 amount) public payable {
+    	                  uint256 amount) public payable whenActive {
         uint256 tokenBalance;
         address pToken = mortgagePool.getUnderlyingToPToken(token);
         require(pToken != address(0x0), "Log:InsurancePool:!pToken");
@@ -241,7 +264,7 @@ contract InsurancePoolV2 {
     // token:标的资产地址，USDT、ETH...
     // amount:赎回份额
     function redemptionIns(address token, 
-    	                   uint256 amount) public {
+    	                   uint256 amount) public whenActive {
         uint256 tokenBalance;
         address pToken = mortgagePool.getUnderlyingToPToken(token);
     	updateLatestTime(token);

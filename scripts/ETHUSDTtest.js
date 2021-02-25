@@ -1,8 +1,8 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
-const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,setInsurancePool,setMortgagePool,
-	setPrice,setMaxRate,setQuaryAddress,
-	deployMortgagePool,approve,create,
+const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,depolyFactory,setInsurancePool,setMortgagePool,
+	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,
+	deployMortgagePool,approve,createPtoken,setInfo,getPTokenAddress,
 	getTokenInfo,allow,coin,getLedger,supplement,
 	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,getInfoRealTime,
 	exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,getTotalSupply,getBalances,subscribeIns,redemptionIns} = require("./normal-scripts.js");
@@ -13,12 +13,14 @@ async function main() {
 	const ETHAddress = "0x0000000000000000000000000000000000000000";
 	// 部署USDT合约
 	USDTContract = await deployUSDT();
+	// 部署工厂合约
+	factory = await depolyFactory();
 	// 部署抵押池合约
-	pool = await deployMortgagePool();
+	pool = await deployMortgagePool(factory.address);
 	// 部署价格合约
 	NestQuery = await deployNestQuery();
 	// 部署保险池合约
-	insurancePool = await deployInsurancePool();
+	insurancePool = await deployInsurancePool(factory.address);
 	// 向抵押池合约授权USDT
 	await approve(USDTContract.address, pool.address, USDT("999999"));
 	// 抵押池合约中设置保险池合约地址
@@ -26,9 +28,14 @@ async function main() {
 	// 保险池合约中设置抵押池合约地址
 	await setMortgagePool(insurancePool.address, pool.address);
 	// 创建p资产
-	await create(pool.address, USDTContract.address, "USDT");
+	await createPtoken(factory.address, "USDT");
+	// 设置可操作p资产地址
+	await setPTokenOperator(factory.address, pool.address, "1");
+	await setPTokenOperator(factory.address, insurancePool.address, "1");
 	// 获取PUSDT地址
-	const USDTPToken = await getTokenInfo(pool.address, insurancePool.address, USDTContract.address);
+	const USDTPToken = await getPTokenAddress(factory.address, "0");
+	// 设置p资产与标的资产地址
+	await setInfo(pool.address, USDTContract.address, USDTPToken);
 	// 允许抵押ETH生成PUSDT
 	await allow(pool.address, USDTPToken, ETHAddress);
 	// 设置ETH最高抵押率
@@ -73,10 +80,12 @@ async function main() {
 	await ERC20Balance(USDTPToken, insurancePool.address);
 
 	await ERC20Balance(USDTContract.address, insurancePool.address);
-	await exchangeUnderlyingToPToken(insurancePool.address, USDTContract.address, USDT("1"));
+	await ERC20Balance(USDTPToken, accounts[0].address);
+	await exchangeUnderlyingToPToken(insurancePool.address, USDTContract.address, USDT("1000"));
 	await ERC20Balance(USDTContract.address, insurancePool.address);
+	await ERC20Balance(USDTPToken, accounts[0].address);
 
-	// 赎回保险
+	// 赎回保险--本地私链测试时注释掉，被冻结无法测试
 	await ERC20Balance(USDTContract.address, insurancePool.address);
 	await ERC20Balance(USDTContract.address, accounts[0].address);
 	await getBalances(insurancePool.address, USDTContract.address, accounts[0].address);

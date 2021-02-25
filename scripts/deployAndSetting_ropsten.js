@@ -1,8 +1,8 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
-const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,setInsurancePool,setMortgagePool,
-	setPrice,setMaxRate,setQuaryAddress,
-	deployMortgagePool,create,
+const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,depolyFactory,setInsurancePool,setMortgagePool,
+	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,
+	deployMortgagePool,createPtoken,setInfo,getPTokenAddress,
 	getTokenInfo,allow,coin,getInsurancePool} = require("./normal-scripts.js");
 
 // 部署脚本，只需执行一次

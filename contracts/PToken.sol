@@ -3,6 +3,7 @@ pragma solidity ^0.6.12;
 
 import "./lib/SafeMath.sol";
 import "./iface/IParasset.sol";
+import "./iface/IPTokenFactory.sol";
 
 contract PToken is IParasset {
     using SafeMath for uint256;
@@ -14,31 +15,32 @@ contract PToken is IParasset {
     string public symbol = "";
     uint8 public decimals = 18;
 
-    address public mortgagePool;
-    address public insurancePool;
+    IPTokenFactory pTokenFactory;
 
     event Destroy(uint256 amount, address account);
     event Issuance(uint256 amount, address account);
 
     constructor (string memory _name, 
-                 string memory _symbol,
-                 address _mortgagePool, 
-                 address _insurancePool) public {
+                 string memory _symbol) public {
     	name = _name;                                                               
     	symbol = _symbol;
-    	mortgagePool = _mortgagePool;
-        insurancePool = _insurancePool;
+    	pTokenFactory = IPTokenFactory(address(msg.sender));
     }
 
     //---------modifier---------
 
     modifier onlyPool()
     {
-    	require(msg.sender == mortgagePool || msg.sender == insurancePool, "Log:PToken:!Pool");
+    	require(pTokenFactory.getPTokenOperator(address(msg.sender)), "Log:PToken:!Pool");
     	_;
     }
 
     //---------view---------
+
+    // Query factory contract address
+    function getPTokenFactory() public view returns(address) {
+        return address(pTokenFactory);
+    }
 
     /// @notice The view of totalSupply
     /// @return The total supply of ntoken
