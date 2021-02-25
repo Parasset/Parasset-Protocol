@@ -135,6 +135,18 @@ exports.setQuaryAddress = async function (mortgagePool, quary) {
     console.log(`>>> [setQuaryAddress SUCCESS]`);
 }
 
+// 设置flag
+exports.setFlag = async function(mortgagePool, num) {
+	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const setFlag = await pool.setFlag(num);
+    console.log(`>>> [setFlag SUCCESS]`);
+}
+exports.setFlag2 = async function(insurancePool, num) {
+	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
+    const setFlag = await pool.setFlag(num);
+    console.log(`>>> [setFlag SUCCESS]`);
+}
+
 // 设置最高抵押
 exports.setMaxRate = async function (mortgagePool, MToken, rate) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);

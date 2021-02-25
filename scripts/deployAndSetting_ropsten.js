@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
 const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,depolyFactory,setInsurancePool,setMortgagePool,
-	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,
+	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,setFlag,setFlag2,
 	deployMortgagePool,createPtoken,setInfo,getPTokenAddress,
 	getTokenInfo,allow,coin,getInsurancePool} = require("./normal-scripts.js");
 
@@ -39,6 +39,9 @@ async function main() {
 	// 设置允许抵押NEST
 	await allow(pool.address, USDTPToken, NESTContract.address);
 	await allow(pool.address, ETHPToken, NESTContract.address);
+	// 设置flag
+	await setFlag(pool.address, "1");
+	await setFlag2(insurancePool.address, "1");
 	// 设置抵押率-ETH
 	await setMaxRate(pool.address, ETHAddress, "70");
 	// 设置抵押率-NEST

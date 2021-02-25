@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
 const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,depolyFactory,setInsurancePool,setMortgagePool,
-	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,
+	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,setFlag,setFlag2,
 	deployMortgagePool,approve,createPtoken,setInfo,getPTokenAddress,
 	getTokenInfo,allow,coin,getLedger,supplement,
 	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,
@@ -23,6 +23,8 @@ async function main() {
 	await createPtoken(factory.address, "USDT");
 	await setPTokenOperator(factory.address, pool.address, "1");
 	await setPTokenOperator(factory.address, insurancePool.address, "1");
+	await setFlag(pool.address, "1");
+	await setFlag2(insurancePool.address, "1");
 	const USDTPToken = await getPTokenAddress(factory.address, "0");
 	await setInfo(pool.address, USDTContract.address, USDTPToken);
 	await allow(pool.address, USDTPToken, NESTContract.address);

@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
 const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,depolyFactory,setInsurancePool,setMortgagePool,
-	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,
+	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,setFlag,setFlag2,
 	deployMortgagePool,approve,createPtoken,setInfo,getPTokenAddress,
 	getTokenInfo,allow,coin,getLedger,supplement,
 	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,getInfoRealTime,
@@ -32,6 +32,9 @@ async function main() {
 	// 设置可操作p资产地址
 	await setPTokenOperator(factory.address, pool.address, "1");
 	await setPTokenOperator(factory.address, insurancePool.address, "1");
+	// 设置flag
+	await setFlag(pool.address, "1");
+	await setFlag2(insurancePool.address, "1");
 	// 获取PUSDT地址
 	const USDTPToken = await getPTokenAddress(factory.address, "0");
 	// 设置p资产与标的资产地址
