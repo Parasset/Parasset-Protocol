@@ -14,12 +14,14 @@ async function main() {
 	USDTContract = await deployUSDT();
 	// 部署NEST合约
 	NESTContract = await deployNEST();
+	// 部署工厂合约
+	factory = await depolyFactory();
 	// 部署抵押池合约
-	pool = await deployMortgagePool();
+	pool = await deployMortgagePool(factory.address);
 	// 部署Nest价格合约
 	NestQuery = await deployNestQuery();
 	// 部署保险池合约
-	insurancePool = await deployInsurancePool();
+	insurancePool = await deployInsurancePool(factory.address);
 	// 设置保险池合约
 	await setInsurancePool(pool.address, insurancePool.address);
 	// 设置抵押池合约
@@ -27,21 +29,24 @@ async function main() {
 	// 查看保险池地址
 	await getInsurancePool(pool.address);
 	// 创建P资产-PUSDT
-	await create(pool.address, USDTContract.address, "USDT");
+	await createPtoken(factory.address, "USDT");
 	// 创建P资产-PETH
-	await create(pool.address, ETHAddress, "ETH");
+	await createPtoken(factory.address, "ETH");
+	// 设置可操作p资产地址
+	await setPTokenOperator(factory.address, pool.address, "1");
+	await setPTokenOperator(factory.address, insurancePool.address, "1");
+	// 设置flag
+	await setFlag(pool.address, "1");
+	await setFlag2(insurancePool.address, "1");
 	// 获取P资产地址-PUSDT
-	const USDTPToken = await getTokenInfo(pool.address, insurancePool.address, USDTContract.address);
+	const USDTPToken = await getPTokenAddress(factory.address, "0");
 	// 获取P资产地址-PETH
-	const ETHPToken = await getTokenInfo(pool.address, insurancePool.address, ETHAddress);
+	const ETHPToken = await await getPTokenAddress(factory.address, "1");;
 	// 设置允许抵押ETH
 	await allow(pool.address, USDTPToken, ETHAddress);
 	// 设置允许抵押NEST
 	await allow(pool.address, USDTPToken, NESTContract.address);
 	await allow(pool.address, ETHPToken, NESTContract.address);
-	// 设置flag
-	await setFlag(pool.address, "1");
-	await setFlag2(insurancePool.address, "1");
 	// 设置抵押率-ETH
 	await setMaxRate(pool.address, ETHAddress, "70");
 	// 设置抵押率-NEST
@@ -55,6 +60,7 @@ async function main() {
 	console.log("network:ropsten");
 	console.log(`NestContract:${NESTContract.address}`);
 	console.log(`USDTContract:${USDTContract.address}`);
+	console.log(`PTokenFactory:${factory.address}`);
 	console.log(`MortgagePool:${pool.address}`);
 	console.log(`InsurancePool:${insurancePool.address}`);
 	console.log(`NestQuery:${NestQuery.address}`);

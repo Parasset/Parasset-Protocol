@@ -103,6 +103,7 @@ exports.setMortgagePool = async function (insurancePool, add) {
 exports.approve = async function (token, to, value) {
 	const ERC20Contract = await ethers.getContractAt("IERC20", token);
     const approve = await ERC20Contract.approve(to, value);
+    await approve.wait(1);
     console.log(`>>> [APPROVE]: ${token} approve ${value} to ${to}`);
 }
 
@@ -118,6 +119,7 @@ exports.createPtoken = async function (factory, name) {
 exports.setInfo = async function (mortgagePool, token, pToken) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
 	const setInfo = await pool.setInfo(token, pToken);
+	await setInfo.wait(1);
     console.log(`>>> [setInfo SUCCESS]`);
 }
 
@@ -125,6 +127,7 @@ exports.setInfo = async function (mortgagePool, token, pToken) {
 exports.allow = async function (mortgagePool, PToken, MToken) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const allow = await pool.setMortgageAllow(PToken, MToken, "1");
+    await allow.wait(1);
     console.log(`>>> [ALLOW SUCCESS]`);
 }
 
@@ -132,6 +135,7 @@ exports.allow = async function (mortgagePool, PToken, MToken) {
 exports.setQuaryAddress = async function (mortgagePool, quary) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const setQuary = await pool.setQuaryAddress(quary);
+    await setQuary.wait(1);
     console.log(`>>> [setQuaryAddress SUCCESS]`);
 }
 
@@ -139,11 +143,13 @@ exports.setQuaryAddress = async function (mortgagePool, quary) {
 exports.setFlag = async function(mortgagePool, num) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const setFlag = await pool.setFlag(num);
+    await setFlag.wait(1);
     console.log(`>>> [setFlag SUCCESS]`);
 }
 exports.setFlag2 = async function(insurancePool, num) {
 	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
     const setFlag = await pool.setFlag(num);
+    await setFlag.wait(1);
     console.log(`>>> [setFlag SUCCESS]`);
 }
 
@@ -151,6 +157,7 @@ exports.setFlag2 = async function(insurancePool, num) {
 exports.setMaxRate = async function (mortgagePool, MToken, rate) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const maxRate = await pool.setMaxRate(MToken, rate);
+    await maxRate.wait(1);
     console.log(`>>> [setMaxRate SUCCESS]`);
 }
 
