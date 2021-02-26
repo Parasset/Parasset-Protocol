@@ -34,7 +34,7 @@ npx hardhat run scripts/deployAndSetting_ropsten.js --network ropsten
 ```
 
 合约 | 地址 | 描述
----|---
+---|---|---
 NestContract | 0x1e481DA2B644d2E63b0aa36e3D6eFb8a802804CF | NEST Token合约
 USDTContract | 0xfA3b8a37e941b8b3e83F0505A104a91330bd40Ba | USDT Token 合约
 PTokenFactory | 0x260D92a64D24eCCE01db2013E060Af99aE95A4F0 | P资产工厂合约
