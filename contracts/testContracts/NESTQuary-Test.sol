@@ -30,4 +30,13 @@ contract NestQuery {
         return (0,0,avg[token],0,0);
     }
 
+    function latestPrice(address token) 
+        public view returns(uint256 ethAmount, 
+                            uint256 tokenAmount, 
+                            uint128 avgPrice, 
+                            int128 vola, 
+                            uint256 bn) {
+        return (0,0,avg[token],0,0);
+    } 
+
 }
