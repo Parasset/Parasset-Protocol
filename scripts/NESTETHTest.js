@@ -53,26 +53,40 @@ async function main() {
 
 	// 铸币
 	await coin(pool.address, NESTContract.address, ETHPToken, ETH("4"), "50", "10000000000000000");
-	const ledger = await getLedger(pool.address, ETHPToken, NESTContract.address);
+	const ledger = await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
 
 	// 增加抵押
 	await supplement(pool.address, NESTContract.address, ETHPToken, ETH("2"), "10000000000000000");
-	await getLedger(pool.address, ETHPToken, NESTContract.address);
+	await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
 	await ERC20Balance(ETHPToken, insurancePool.address);
 	// 减少抵押
 	await decrease(pool.address, NESTContract.address, ETHPToken, ETH("1"), "10000000000000000");
-	await getLedger(pool.address, ETHPToken, NESTContract.address);
+	await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
 	await ERC20Balance(ETHPToken, insurancePool.address);
 	// 新增铸币
 	await increaseCoinage(pool.address, NESTContract.address, ETHPToken, ETH("1"), "10000000000000000");
-	await getLedger(pool.address, ETHPToken, NESTContract.address);
+	await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
 	// 减少铸币
 	await reducedCoinage(pool.address, NESTContract.address, ETHPToken, ETH("1"), "10000000000000000");
-	await getLedger(pool.address, ETHPToken, NESTContract.address);
+	await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
 	// 赎回
 	// await redemptionAll(pool.address, NESTContract.address, USDTPToken);
 	// await getLedger(pool.address, USDTPToken, NESTContract.address);
 	await ERC20Balance(ETHPToken, insurancePool.address);
+
+	// 认购保险
+	await approve(ETHPToken, insurancePool.address, ETH("999999"));
+	await getBalances(insurancePool.address, ETHAddress, accounts[0].address);
+	await subscribeIns(insurancePool.address, ETHAddress, ETH(2));
+	await getBalances(insurancePool.address, ETHAddress, accounts[0].address);
+	// 兑换
+	await ERC20Balance(USDTPToken, insurancePool.address);
+	await exchangePTokenToUnderlying(insurancePool.address, USDTPToken, ETH("1"));
+	await ERC20Balance(USDTPToken, insurancePool.address);
+
+	await ERC20Balance(USDTContract.address, insurancePool.address);
+	await exchangeUnderlyingToPToken(insurancePool.address, USDTContract.address, USDT("1"));
+	await ERC20Balance(USDTContract.address, insurancePool.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

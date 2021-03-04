@@ -53,20 +53,20 @@ async function main() {
 
 	// 铸币
 	await coin(pool.address, ETHAddress, USDTPToken, ETH("4"), "50", "4010000000000000000");
-	const ledger = await getLedger(pool.address, USDTPToken, ETHAddress);
+	const ledger = await getLedger(pool.address, USDTPToken, ETHAddress, accounts[0].address);
 	// 增加抵押
 	await supplement(pool.address, ETHAddress, USDTPToken, ETH("2"), "2010000000000000000");
-	await getLedger(pool.address, USDTPToken, ETHAddress);
+	await getLedger(pool.address, USDTPToken, ETHAddress, accounts[0].address);
 	// 减少抵押
 	await decrease(pool.address, ETHAddress, USDTPToken, ETH("1"), "10000000000000000");
-	await getLedger(pool.address, USDTPToken, ETHAddress);
+	await getLedger(pool.address, USDTPToken, ETHAddress, accounts[0].address);
 	// 新增铸币
 	await increaseCoinage(pool.address, ETHAddress, USDTPToken, ETH("1"), "10000000000000000");
-	await getLedger(pool.address, USDTPToken, ETHAddress);
+	await getLedger(pool.address, USDTPToken, ETHAddress, accounts[0].address);
 	// 减少铸币
 	await reducedCoinage(pool.address, ETHAddress, USDTPToken, ETH("1"), "10000000000000000");
-	await getLedger(pool.address, USDTPToken, ETHAddress);
-	await getInfoRealTime(pool.address, ETHAddress, USDTPToken, ETH("1"), USDT("1"), "65");
+	await getLedger(pool.address, USDTPToken, ETHAddress, accounts[0].address);
+	await getInfoRealTime(pool.address, ETHAddress, USDTPToken, ETH("1"), USDT("1"), "65", accounts[0].address);
 
 	// 认购保险
 	await approve(USDTContract.address, insurancePool.address, USDT("999999"));
@@ -76,7 +76,7 @@ async function main() {
 	// 测试清算
 	// 修改价格，跌10倍
 	await setPrice(NestQuery.address,USDTContract.address, "100000");
-	await getInfoRealTime(pool.address, ETHAddress, USDTPToken, ETH("1"), "100000", "65");
+	await getInfoRealTime(pool.address, ETHAddress, USDTPToken, ETH("1"), "100000", "65", accounts[0].address);
 
 	await getInsNegative(insurancePool.address, USDTContract.address);
 	await ERC20Balance(USDTPToken, accounts[0].address);

@@ -121,14 +121,16 @@ contract MortgagePool {
     // tokenPrice:抵押资产价格数量
     // uTokenPrice:标的资产价格数量
     // maxRateNum:计算参照的最大抵押率
+    // owner:查询用户地址
     // 返回：稳定费、抵押率、最大可减少抵押资产数量、最大可新增铸币数量
     function getInfoRealTime(address mortgageToken, 
                              address pToken, 
                              uint256 tokenPrice, 
                              uint256 uTokenPrice,
-                             uint256 maxRateNum) public view 
+                             uint256 maxRateNum,
+                             uint256 owner) public view 
                              returns(uint256 fee, uint256 mortgageRate, uint256 maxSubM, uint256 maxAddP) {
-        PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+        PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(owner)];
         fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
         uint256 pTokenPrice = getDecimalConversion(pTokenToUnderlying[pToken], uTokenPrice, pToken);
         mortgageRate = getMortgageRate(pLedger.mortgageAssets, 
@@ -184,12 +186,13 @@ contract MortgagePool {
 
     // 查看债仓数据
     function getLedger(address pToken, 
-    	               address mortgageToken) 
+    	               address mortgageToken,
+                       address owner) 
     	public view returns(uint256 mortgageAssets, 
     		                uint256 parassetAssets, 
     		                uint256 blockHeight,
                             uint256 rate) {
-    	PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+    	PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(owner)];
     	return (pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
     }
 

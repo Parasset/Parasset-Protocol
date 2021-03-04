@@ -278,17 +278,17 @@ exports.getBalances = async function (insurancePool, token, add) {
 }
 
 // 查看债仓信息
-exports.getLedger = async function (mortgagePool, PToken, MToken) {
+exports.getLedger = async function (mortgagePool, PToken, MToken, owner) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-    const ledger = await pool.getLedger(PToken, MToken);
+    const ledger = await pool.getLedger(PToken, MToken, owner);
     console.log(">>>>>> ledger =", ledger[0].toString(), ledger[1].toString(), ledger[2].toString(), ledger[3].toString());
     return [ledger[0], ledger[1], ledger[2], ledger[3]];
 }
 
 // 查看实时数据
-exports.getInfoRealTime = async function (mortgagePool, MToken, PToken, tokenPrice, uTokenPrice, maxRateNum) {
+exports.getInfoRealTime = async function (mortgagePool, MToken, PToken, tokenPrice, uTokenPrice, maxRateNum, owner) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-    const info = await pool.getInfoRealTime(MToken, PToken, tokenPrice, uTokenPrice, maxRateNum);
+    const info = await pool.getInfoRealTime(MToken, PToken, tokenPrice, uTokenPrice, maxRateNum, owner);
     console.log(">>>>>> info =", info[0].toString(), info[1].toString(), info[2].toString(), info[3].toString());
     return [info[0], info[1], info[2], info[3]];
 }
