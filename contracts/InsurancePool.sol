@@ -151,7 +151,6 @@ contract InsurancePool {
     	if (inputToken != address(0x0)) {
     		inputTokenDec = IERC20(inputToken).decimals();
     	}
-
     	if (outputToken != address(0x0)) {
     		outputTokenDec = IERC20(outputToken).decimals();
     	}

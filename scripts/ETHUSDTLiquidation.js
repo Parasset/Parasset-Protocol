@@ -1,11 +1,14 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
-const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployInsurancePool,depolyFactory,setInsurancePool,setMortgagePool,
-	setPrice,setMaxRate,setQuaryAddress,setPTokenOperator,setFlag,setFlag2,
-	deployMortgagePool,approve,createPtoken,setInfo,getPTokenAddress,
-	getTokenInfo,allow,coin,getLedger,supplement,
-	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,getInfoRealTime,liquidation,getInsNegative,
-	exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,getTotalSupply,getBalances,subscribeIns,redemptionIns} = require("./normal-scripts.js");
+
+// 部署
+const {deployUSDT,deployNEST,deployNestQuery,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
+// 设置
+const {setInsurancePool,setMortgagePool,setPrice,setMaxRate,setLine,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow} = require("./normal-scripts.js")
+// 交互
+const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoinage,reducedCoinage,exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns,liquidation} = require("./normal-scripts.js")
+// 查询
+const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getInfoRealTime,getTotalSupply,getBalances,getInsurancePool,getInsNegative} = require("./normal-scripts.js")
 
 async function main() {
 	const accounts = await ethers.getSigners();
@@ -19,6 +22,8 @@ async function main() {
 	pool = await deployMortgagePool(factory.address);
 	// 部署价格合约
 	NestQuery = await deployNestQuery();
+	// 部署获取价格合约
+	PriceController = await deployPriceController(NestQuery.address);
 	// 部署保险池合约
 	insurancePool = await deployInsurancePool(factory.address);
 	// 向抵押池合约授权USDT
@@ -43,13 +48,14 @@ async function main() {
 	await allow(pool.address, USDTPToken, ETHAddress);
 	// 设置ETH最高抵押率
 	await setMaxRate(pool.address, ETHAddress, "70");
+	// 设置ETH平仓线
+	await setLine(pool.address, ETHAddress, "80");
 	// 向抵押池合约授权PUSDT
 	await approve(USDTPToken, pool.address, ETH("999999"));
 	// 设置USDT价格
-	// await setPrice(NestQuery.address,ETHAddress, ETH("1"));
 	await setPrice(NestQuery.address,USDTContract.address, USDT("1"));
 	// 在抵押池合约中设置价格合约地址
-	await setQuaryAddress(pool.address,NestQuery.address);
+	await setPriceController(pool.address,PriceController.address);
 
 	// 铸币
 	await coin(pool.address, ETHAddress, USDTPToken, ETH("4"), "50", "4010000000000000000");
@@ -74,9 +80,11 @@ async function main() {
 	await subscribeIns(insurancePool.address, USDTContract.address, USDT(2));
 
 	// 测试清算
+
+	await exchangeUnderlyingToPToken(insurancePool.address, USDTContract.address, USDT("3"), 0);
 	// 修改价格，跌10倍
-	await setPrice(NestQuery.address,USDTContract.address, "100000");
-	await getInfoRealTime(pool.address, ETHAddress, USDTPToken, ETH("1"), "100000", "65", accounts[0].address);
+	await setPrice(NestQuery.address,USDTContract.address, "493827");
+	await getInfoRealTime(pool.address, ETHAddress, USDTPToken, ETH("1"), "493827", "65", accounts[0].address);
 
 	await getInsNegative(insurancePool.address, USDTContract.address);
 	await ERC20Balance(USDTPToken, accounts[0].address);

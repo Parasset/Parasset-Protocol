@@ -17,9 +17,6 @@ contract PToken is IParasset {
 
     IPTokenFactory pTokenFactory;
 
-    event Destroy(uint256 amount, address account);
-    event Issuance(uint256 amount, address account);
-
     constructor (string memory _name, 
                  string memory _symbol) public {
     	name = _name;                                                               
@@ -112,12 +109,12 @@ contract PToken is IParasset {
     	require(_balances[account] >= amount, "Log:PToken:!destroy");
     	_balances[account] = _balances[account].sub(amount);
     	_totalSupply = _totalSupply.sub(amount);
-    	emit Destroy(amount, account);
+    	emit Transfer(account, address(0x0), amount);
     }
 
     function issuance(uint256 amount, address account) override external onlyPool{
     	_balances[account] = _balances[account].add(amount);
     	_totalSupply = _totalSupply.add(amount);
-    	emit Issuance(amount, account);
+    	emit Transfer(address(0x0), account, amount);
     }
 }

@@ -42,6 +42,14 @@ exports.deployNestQuery= async function () {
     console.log(`>>> [DPLY]: NestQuery deployed, address=${NestQuery.address}, block=${tx.blockNumber}`);
     return NestQuery;
 }
+exports.deployPriceController= async function (add) {
+    const PriceControllerContract = await ethers.getContractFactory("PriceController");
+    const PriceController = await PriceControllerContract.deploy(add);
+    const tx = PriceController.deployTransaction;
+    await tx.wait(1);
+    console.log(`>>> [DPLY]: PriceController deployed, address=${PriceController.address}, block=${tx.blockNumber}`);
+    return PriceController;
+}
 // 修改价格
 exports.setPrice = async function (quaryAddress, token, avg) {
 	const NestQueryContract = await ethers.getContractAt("NestQuery", quaryAddress);
@@ -132,11 +140,11 @@ exports.allow = async function (mortgagePool, PToken, MToken) {
 }
 
 // 设置价格合约
-exports.setQuaryAddress = async function (mortgagePool, quary) {
+exports.setPriceController = async function (mortgagePool, priceController) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-    const setQuary = await pool.setQuaryAddress(quary);
-    await setQuary.wait(1);
-    console.log(`>>> [setQuaryAddress SUCCESS]`);
+    const setPriceController = await pool.setPriceController(priceController);
+    await setPriceController.wait(1);
+    console.log(`>>> [setPriceController SUCCESS]`);
 }
 
 // 设置flag
@@ -159,6 +167,14 @@ exports.setMaxRate = async function (mortgagePool, MToken, rate) {
     const maxRate = await pool.setMaxRate(MToken, rate);
     await maxRate.wait(1);
     console.log(`>>> [setMaxRate SUCCESS]`);
+}
+
+// 设置平仓线
+exports.setLine = async function (mortgagePool, MToken, num) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const line = await pool.setLine(MToken, num);
+    await line.wait(1);
+    console.log(`>>> [setLine SUCCESS]`);
 }
 
 // 设置可操作ptoken地址
@@ -228,16 +244,16 @@ exports.exchangePTokenToUnderlying = async function(insurancePool, PToken, amoun
 	const exchange = await pool.exchangePTokenToUnderlying(PToken, amount);
 	console.log(`>>> [exchange SUCCESS], exchange:${PToken}->${amount}`);
 }
-exports.exchangeUnderlyingToPToken = async function(insurancePool, token, amount) {
+exports.exchangeUnderlyingToPToken = async function(insurancePool, token, amount, valueNum) {
 	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
-	const exchange = await pool.exchangeUnderlyingToPToken(token, amount);
+	const exchange = await pool.exchangeUnderlyingToPToken(token, amount, {value:valueNum});
 	console.log(`>>> [exchange SUCCESS], exchange:${token}->${amount}`);
 }
 
 // 认购保险
-exports.subscribeIns = async function(insurancePool, token, amount) {
+exports.subscribeIns = async function(insurancePool, token, amount, valueNum) {
 	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
-	const subscribe = await pool.subscribeIns(token, amount);
+	const subscribe = await pool.subscribeIns(token, amount, {value:valueNum});
 	console.log(`>>> [subscribeIns SUCCESS], subscribeIns:${token}->${amount}`);
 }
 
@@ -281,7 +297,10 @@ exports.getBalances = async function (insurancePool, token, add) {
 exports.getLedger = async function (mortgagePool, PToken, MToken, owner) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const ledger = await pool.getLedger(PToken, MToken, owner);
-    console.log(">>>>>> ledger =", ledger[0].toString(), ledger[1].toString(), ledger[2].toString(), ledger[3].toString());
+    console.log(`>>>> 抵押资产数量:${ledger[0].toString()}`);
+    console.log(`>>>> 债务数量:${ledger[1].toString()}`);
+    console.log(`>>>> 最近操作区块号:${ledger[2].toString()}`);
+    console.log(`>>>> 抵押率:${ledger[3].toString()}`);
     return [ledger[0], ledger[1], ledger[2], ledger[3]];
 }
 
@@ -289,7 +308,11 @@ exports.getLedger = async function (mortgagePool, PToken, MToken, owner) {
 exports.getInfoRealTime = async function (mortgagePool, MToken, PToken, tokenPrice, uTokenPrice, maxRateNum, owner) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
     const info = await pool.getInfoRealTime(MToken, PToken, tokenPrice, uTokenPrice, maxRateNum, owner);
-    console.log(">>>>>> info =", info[0].toString(), info[1].toString(), info[2].toString(), info[3].toString());
+    console.log("~~~实时数据~~~")
+    console.log(`~~~稳定费:${info[0].toString()}`);
+    console.log(`~~~抵押率:${info[1].toString()}`);
+    console.log(`~~~最大可减少抵押资产数量:${info[2].toString()}`);
+    console.log(`~~~最大可新增铸币数量:${info[3].toString()}`);
     return [info[0], info[1], info[2], info[3]];
 }
 
