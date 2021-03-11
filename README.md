@@ -60,6 +60,12 @@ InsurancePool | 0x37b9F494ee29C9907684415681247FE3ec150ff0 | 保险池合约
 2. 修改抵押率展示方式
 3. 增加P资产增发、销毁日志
 
+价格：
+
+2USDT=1ETH
+
+3NEST=1ETH
+
 合约 | 地址 | 描述
 ---|---|---
 NestContract | 0xae6E04ED92FC12238852cA212f09b96Dc23407C1 | NEST Token合约
