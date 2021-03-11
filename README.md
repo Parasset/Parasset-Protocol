@@ -1,4 +1,4 @@
-![image](https://github.com/Parasset/Doc/blob/main/Parasset_Smart_Contracts.png)
+![image](https://github.com/Parasset/Doc/blob/main/Parasset_Smart_Contracts2.png)
 
 ## 安装
 
