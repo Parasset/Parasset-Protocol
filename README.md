@@ -54,6 +54,24 @@ PETH | 0xFA189E7774325D172A0580C4523E98972c20c7e3 | PETH合约
 MortgagePool | 0x3A94F468ADC13F1715c094388417C599810f3ed9 | 抵押池合约
 InsurancePool | 0x37b9F494ee29C9907684415681247FE3ec150ff0 | 保险池合约
 
+#### V1.2
+
+1. 增加价格调用合约
+2. 修改抵押率展示方式
+3. 增加P资产增发、销毁日志
+
+合约 | 地址 | 描述
+---|---|---
+NestContract | 0xae6E04ED92FC12238852cA212f09b96Dc23407C1 | NEST Token合约
+USDTContract | 0xEDfe846E914d0aaaA42aC031D2D5Fc5467E68a81 | USDT Token 合约
+PTokenFactory | 0x94914baE774EcAc54a29078F010ef7c588573f4d | P资产工厂合约
+MortgagePool | 0xBFDFD8b3a95A4863ae00772d81A9d5Ff1894AF5E | 抵押池合约
+InsurancePool | 0x610a0e22286C6408A2384D7Ff14a10B85C6d8E50 | 保险池合约
+PriceController | 0xEBb7eEbC4DF86Ae5917FAD26A2B3464BB97e0C95 | 价格调用合约
+NestQuery | 0x364b22983ed7EABb4de94924D7e17411FDE674Ae | NEST 价格合约
+PUSDT | 0x1a8A52074932Af7333626a3e757524E3667D78C5 | PUSDT合约
+PETH | 0x282f780533B748a256872E5855d3d84C3bf64Ac0 | PETH合约
+
 ### .private.json
 
 >将sample.private.json更名为.private.json
@@ -84,6 +102,8 @@ InsurancePool | 0x37b9F494ee29C9907684415681247FE3ec150ff0 | 保险池合约
     }
 }
 ```
+
+
 
 
 
