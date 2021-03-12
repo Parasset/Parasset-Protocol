@@ -11,7 +11,7 @@ import "./iface/IERC20.sol";
 import "./iface/IInsurancePool.sol";
 import "./iface/IPTokenFactory.sol";
 import "./iface/IPriceController.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract MortgagePool {
 	using SafeMath for uint256;
@@ -28,6 +28,8 @@ contract MortgagePool {
 	mapping(address=>mapping(address=>bool)) mortgageAllow;
     // p资产=>抵押资产=>用户地址=>债仓数据
 	mapping(address=>mapping(address=>mapping(address=>PersonalLedger))) ledger;
+    // p资产=>抵押资产=>创建过债仓的地址
+    mapping(address=>mapping(address=>address[])) ledgerArray;
     // 抵押资产=>最高抵押率
     mapping(address=>uint256) maxRate;
     // 抵押资产=>平仓线
@@ -52,6 +54,7 @@ contract MortgagePool {
         uint256 parassetAssets;         // P资产
         uint256 blockHeight;            // 上次操作区块高度
         uint256 rate;                   // 抵押率
+        bool created;
     }
 
 	constructor (address factoryAddress) public {
@@ -164,9 +167,10 @@ contract MortgagePool {
     	public view returns(uint256 mortgageAssets, 
     		                uint256 parassetAssets, 
     		                uint256 blockHeight,
-                            uint256 rate) {
+                            uint256 rate,
+                            bool created) {
     	PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(owner)];
-    	return (pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
+    	return (pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate, pLedger.created);
     }
 
     // 查看管理员地址
@@ -212,6 +216,16 @@ contract MortgagePool {
     // 根据p资产查看标的资产地址
     function getPTokenToUnderlying(address pToken) public view returns(address) {
         return pTokenToUnderlying[pToken];
+    }
+
+    // 债仓数组长度
+    function getLedgerArrayNum(address pToken, address mortgageToken) public view returns(uint256) {
+        return ledgerArray[pToken][mortgageToken].length;
+    }
+
+    // 查看创建债仓地址
+    function getLedgerAddress(address pToken, address mortgageToken, uint256 index) public view returns(address) {
+        return ledgerArray[pToken][mortgageToken][index];
     }
 
     //---------governance----------
@@ -291,8 +305,9 @@ contract MortgagePool {
                   address pToken, 
                   uint256 amount, 
                   uint256 rate) public payable whenActive {
-    	require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
-        require(rate != 0, "Log:MortgagePool:rate=0");
+    	require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
+        require(rate > 0, "Log:MortgagePool:rate!=0");
+        require(amount > 0, "Log:MortgagePool:amount!=0");
     	PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
     	// 获取价格
         uint256 tokenPrice;
@@ -322,8 +337,12 @@ contract MortgagePool {
         pLedger.parassetAssets = parassetAssets.add(pTokenAmount);
         pLedger.blockHeight = block.number;
         uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
-        require(mortgageRate < maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
+        require(mortgageRate <= maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
         pLedger.rate = mortgageRate;
+        if (pLedger.created == false) {
+            ledgerArray[pToken][mortgageToken].push(address(msg.sender));
+            pLedger.created = true;
+        }
     }
     
     // 新增抵押
@@ -334,7 +353,7 @@ contract MortgagePool {
     function supplement(address mortgageToken, 
                         address pToken, 
                         uint256 amount) public payable whenActive {
-    	require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+    	require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
     	PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
     	// 获取价格
         uint256 tokenPrice;
@@ -360,7 +379,12 @@ contract MortgagePool {
     	pLedger.mortgageAssets = pLedger.mortgageAssets.add(amount);
     	pLedger.blockHeight = block.number;
         uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
+        require(mortgageRate > 0, "Log:MortgagePool:mortgageRate>0");
         pLedger.rate = mortgageRate;
+        if (pLedger.created == false) {
+            ledgerArray[pToken][mortgageToken].push(address(msg.sender));
+            pLedger.created = true;
+        }
     }
 
     // 提取资产
@@ -371,7 +395,7 @@ contract MortgagePool {
     function decrease(address mortgageToken, 
                       address pToken, 
                       uint256 amount) public payable whenActive {
-    	require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+    	require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
     	PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
     	// 获取价格
         (uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, pTokenToUnderlying[pToken], msg.value);
@@ -389,13 +413,17 @@ contract MortgagePool {
     	pLedger.blockHeight = block.number;
     	uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
         pLedger.rate = mortgageRate;
-    	require(mortgageRate < maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
+    	require(mortgageRate <= maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
     	// 转出抵押token
     	if (mortgageToken != address(0x0)) {
     		ERC20(mortgageToken).safeTransfer(address(msg.sender), amount);
     	} else {
     		payEth(address(msg.sender), amount);
     	}
+        if (pLedger.created == false) {
+            ledgerArray[pToken][mortgageToken].push(address(msg.sender));
+            pLedger.created = true;
+        }
     }
 
     // 新增铸币
@@ -406,8 +434,9 @@ contract MortgagePool {
     function increaseCoinage(address mortgageToken,
                              address pToken,
                              uint256 amount) public payable whenActive {
-        require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+        require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
         PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+        require(pLedger.created, "Log:MortgagePool:!created");
         // 获取价格
         (uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, pTokenToUnderlying[pToken], msg.value);
         uint256 blockHeight = pLedger.blockHeight;
@@ -424,8 +453,12 @@ contract MortgagePool {
         pLedger.blockHeight = block.number;
         uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
         pLedger.rate = mortgageRate;
-        require(mortgageRate < maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
+        require(mortgageRate <= maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
         PToken(pToken).issuance(amount, address(msg.sender));
+        if (pLedger.created == false) {
+            ledgerArray[pToken][mortgageToken].push(address(msg.sender));
+            pLedger.created = true;
+        }
     }
 
     // 减少铸币
@@ -436,7 +469,7 @@ contract MortgagePool {
     function reducedCoinage(address mortgageToken,
                             address pToken,
                             uint256 amount) public payable whenActive {
-        require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+        require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
         PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
         address uToken = pTokenToUnderlying[pToken];
         // 获取价格
@@ -454,9 +487,14 @@ contract MortgagePool {
         pLedger.parassetAssets = parassetAssets.sub(amount);
         pLedger.blockHeight = block.number;
         uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
+        require(mortgageRate > 0, "Log:MortgagePool:mortgageRate>0");
         pLedger.rate = mortgageRate;
         // 销毁p资产
         insurancePool.destroyPToken(pToken, amount, uToken);
+        if (pLedger.created == false) {
+            ledgerArray[pToken][mortgageToken].push(address(msg.sender));
+            pLedger.created = true;
+        }
     }
 
     // 赎回全部抵押
@@ -464,8 +502,9 @@ contract MortgagePool {
     // pToken:p资产地址
     // 注意：mortgageToken为0X0时，抵押资产为ETH。
     function redemptionAll(address mortgageToken, address pToken) public onleRedemptionAll {
-        require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+        require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
         PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+        require(pLedger.created, "Log:MortgagePool:!created");
         address uToken = pTokenToUnderlying[pToken];
         uint256 blockHeight = pLedger.blockHeight;
         uint256 parassetAssets = pLedger.parassetAssets;
@@ -491,6 +530,10 @@ contract MortgagePool {
         } else {
             payEth(address(msg.sender), mortgageAssetsAmount);
         }
+        if (pLedger.created == false) {
+            ledgerArray[pToken][mortgageToken].push(address(msg.sender));
+            pLedger.created = true;
+        }
     }
 
     // 清算
@@ -501,16 +544,13 @@ contract MortgagePool {
     function liquidation(address mortgageToken, 
                          address pToken,
                          address account) public payable whenActive {
-    	require(mortgageAllow[pToken][mortgageToken] == true, "Log:MortgagePool:!mortgageAllow");
+    	require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
     	PersonalLedger storage pLedger = ledger[pToken][mortgageToken][account];
+        require(pLedger.created, "Log:MortgagePool:!created");
     	// 调用预言机，计算p资产数量
         address uToken = pTokenToUnderlying[pToken];
     	(uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, uToken, msg.value);
     	uint256 pTokenAmount = pLedger.mortgageAssets.mul(pTokenPrice).mul(90).div(tokenPrice.mul(100));
-        console.log("tokenPrice", tokenPrice);
-        console.log("pTokenPrice", pTokenPrice);
-        console.log("pLedger.mortgageAssets", pLedger.mortgageAssets);
-        console.log("pTokenAmount", pTokenAmount);
     	// 计算稳定费
     	uint256 fee = 0;
         uint256 blockHeight = pLedger.blockHeight;

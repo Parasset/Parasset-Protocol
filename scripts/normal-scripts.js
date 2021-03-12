@@ -271,13 +271,6 @@ exports.transfer = async function(token, to, value) {
     console.log(`>>> [transfer]: ${token} transfer ${value} to ${to}`);
 }
 
-// 查看保险池地址
-exports.getInsurancePool = async function(mortgagePool) {
-	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-	const insurancePool = await pool.getInsurancePool();
-	console.log(`>>> InsurancePool=${insurancePool}`);
-}
-
 // 查询LP总量
 exports.getTotalSupply = async function (insurancePool, token) {
 	const pool = await ethers.getContractAt("InsurancePool", insurancePool);
@@ -301,7 +294,8 @@ exports.getLedger = async function (mortgagePool, PToken, MToken, owner) {
     console.log(`>>>> 债务数量:${ledger[1].toString()}`);
     console.log(`>>>> 最近操作区块号:${ledger[2].toString()}`);
     console.log(`>>>> 抵押率:${ledger[3].toString()}`);
-    return [ledger[0], ledger[1], ledger[2], ledger[3]];
+    console.log(`>>>> 是否创建:${ledger[4].toString()}`);
+    return [ledger[0], ledger[1], ledger[2], ledger[3], ledger[4]];
 }
 
 // 查看实时数据
@@ -351,5 +345,93 @@ exports.getPTokenAddress = async function (factory, index) {
 	const fac = await ethers.getContractAt("PTokenFactory", factory);
     const address = await fac.getPTokenAddress(index);
     console.log(`>>> pTokenAddress=${address}`);
+    return address;
+}
+
+// 查看管理员地址
+exports.getGovernance = async function (mortgagePool) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const governance  = await pool.getGovernance();
+    console.log(`>>> governance=${governance}`);
+    return governance;
+}
+
+// 查看保险池地址
+exports.getInsurancePool = async function (mortgagePool) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const insurancePool  = await pool.getInsurancePool();
+    console.log(`>>> insurancePool=${insurancePool}`);
+    return insurancePool;
+}
+
+// 查看市场基础利率
+exports.getR0 = async function (mortgagePool) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const r0  = await pool.getR0();
+    console.log(`>>> r0=${r0.toString()}`);
+    return r0.toString();
+}
+
+// 查看一年的出块量
+exports.getOneYear = async function (mortgagePool) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const oneYear  = await pool.getOneYear();
+    console.log(`>>> oneYear=${oneYear.toString()}`);
+    return oneYear.toString();
+}
+
+// 查看最高抵押率
+exports.getMaxRate = async function (mortgagePool, MToken) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const maxRate  = await pool.getMaxRate(MToken);
+    console.log(`>>> oneYear=${maxRate.toString()}`);
+    return maxRate.toString();
+}
+
+// 查看平仓线
+exports.getLine = async function (mortgagePool, MToken) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const line  = await pool.getLine(MToken);
+    console.log(`>>> line=${line.toString()}`);
+    return line.toString();
+}
+
+// 查看价格合约地址
+exports.getPriceController = async function (mortgagePool) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const priceController  = await pool.getPriceController();
+    console.log(`>>> priceController=${priceController}`);
+    return priceController;
+}
+
+// 根据标的资产查看p资产地址
+exports.getUnderlyingToPToken = async function (mortgagePool, uToken) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const pToken  = await pool.getUnderlyingToPToken(uToken);
+    console.log(`>>> pToken=${pToken}`);
+    return pToken;
+}
+
+// 根据p资产查看标的资产地址
+exports.getPTokenToUnderlying = async function (mortgagePool, pToken) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const uToken  = await pool.getPTokenToUnderlying(pToken);
+    console.log(`>>> uToken=${uToken}`);
+    return uToken;
+}
+
+// 债仓数组长度
+exports.getLedgerArrayNum = async function (mortgagePool, pToken, MToken) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const num  = await pool.getLedgerArrayNum(pToken, MToken);
+    console.log(`>>> length=${num}`);
+    return num;
+}
+
+// 查看创建债仓地址
+exports.getLedgerAddress = async function (mortgagePool, pToken, MToken, num) {
+    const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
+    const address  = await pool.getLedgerAddress(pToken, MToken,num);
+    console.log(`>>> address=${address}`);
     return address;
 }

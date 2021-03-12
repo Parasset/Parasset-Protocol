@@ -7,7 +7,7 @@ const {setInsurancePool,setMortgagePool,setPrice,setMaxRate,setLine,setPriceCont
 // 交互
 const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoinage,reducedCoinage,exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns} = require("./normal-scripts.js")
 // 查询
-const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getInfoRealTime,getTotalSupply,getBalances,getInsurancePool} = require("./normal-scripts.js")
+const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getInfoRealTime,getInsurancePool,getTotalSupply,getBalances} = require("./normal-scripts.js")
 const contractsDeployed_ropsten = require("./contracts_ropsten.js");
 
 // 部署脚本，只需执行一次
@@ -54,6 +54,10 @@ async function main() {
 	await setLine(pool.address, NESTContract.address, "80");
 	// 设置价格合约
 	await setPriceController(pool.address,PriceController.address);
+	// 设置标的资产与p资产映射
+	await setInfo(pool.address, USDTContract.address, USDTPToken);
+	await setInfo(pool.address, ETHAddress, ETHPToken);
+
 	console.log("network:ropsten");
 	console.log(`MortgagePool:${pool.address}`);
 	console.log(`InsurancePool:${insurancePool.address}`);

@@ -78,6 +78,32 @@ NestQuery | 0x364b22983ed7EABb4de94924D7e17411FDE674Ae | NEST 价格合约
 PUSDT | 0x1a8A52074932Af7333626a3e757524E3667D78C5 | PUSDT合约
 PETH | 0x282f780533B748a256872E5855d3d84C3bf64Ac0 | PETH合约
 
+#### V1.3
+
+1. 增加抵押资产、减少铸币，抵押率不能低于0%
+2. 铸币、减少抵押、新增铸币，抵押率小于等于70%
+3. 增加返回地址列表，单条数据查询接口
+
+价格：
+
+2USDT=1ETH
+
+3NEST=1ETH
+
+保险赎回时间：10分钟赎回一次，每次赎回时间5分钟
+
+合约 | 地址 | 描述
+---|---|---
+NestContract | 0xae6E04ED92FC12238852cA212f09b96Dc23407C1 | NEST Token合约
+USDTContract | 0xEDfe846E914d0aaaA42aC031D2D5Fc5467E68a81 | USDT Token 合约
+PTokenFactory | 0x94914baE774EcAc54a29078F010ef7c588573f4d | P资产工厂合约
+MortgagePool | 0x73fc3699F2aD42Cb3ae8dB0F998B36E9BB784324 | 抵押池合约
+InsurancePool | 0xf8246405404c59964206Fac834317f2f50b9a670 | 保险池合约
+PriceController | 0xEBb7eEbC4DF86Ae5917FAD26A2B3464BB97e0C95 | 价格调用合约
+NestQuery | 0x364b22983ed7EABb4de94924D7e17411FDE674Ae | NEST 价格合约
+PUSDT | 0x1a8A52074932Af7333626a3e757524E3667D78C5 | PUSDT合约
+PETH | 0x282f780533B748a256872E5855d3d84C3bf64Ac0 | PETH合约
+
 ### .private.json
 
 >将sample.private.json更名为.private.json

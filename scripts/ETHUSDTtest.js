@@ -10,14 +10,6 @@ const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoina
 // 查询
 const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getInfoRealTime,getTotalSupply,getBalances} = require("./normal-scripts.js")
 
-
-// const {USDT,ETH,deployUSDT,deployNEST,deployNestQuery,deployPriceController,deployInsurancePool,depolyFactory,setInsurancePool,setMortgagePool,
-// 	setPrice,setMaxRate,setLine,setPriceController,setPTokenOperator,setFlag,setFlag2,
-// 	deployMortgagePool,approve,createPtoken,setInfo,getPTokenAddress,
-// 	getTokenInfo,allow,coin,getLedger,supplement,
-// 	getFee,ERC20Balance,redemptionAll,decrease,increaseCoinage,reducedCoinage,getInfoRealTime,
-// 	exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,getTotalSupply,getBalances,subscribeIns,redemptionIns} = require("./normal-scripts.js");
-
 async function main() {
 	const accounts = await ethers.getSigners();
 	// USDT价格

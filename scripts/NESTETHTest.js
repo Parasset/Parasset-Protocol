@@ -7,7 +7,7 @@ const {setInsurancePool,setMortgagePool,setPrice,setMaxRate,setLine,setPriceCont
 // 交互
 const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoinage,reducedCoinage,exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns} = require("./normal-scripts.js")
 // 查询
-const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getInfoRealTime,getTotalSupply,getBalances,getInsurancePool} = require("./normal-scripts.js")
+const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getInfoRealTime,getTotalSupply,getBalances,getInsurancePool,getLedgerArrayNum,getLedgerAddress} = require("./normal-scripts.js")
 
 async function main() {
 	const accounts = await ethers.getSigners();
@@ -57,8 +57,11 @@ async function main() {
 	await setPriceController(pool.address,PriceController.address);
 
 	// 铸币
-	await coin(pool.address, NESTContract.address, ETHPToken, ETH("4"), "50", "10000000000000000");
+	await coin(pool.address, NESTContract.address, ETHPToken, ETH("12"), "50", "10000000000000000");
 	const ledger = await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
+
+	// await getLedgerArrayNum(pool.address, ETHPToken, NESTContract.address);
+	// await getLedgerAddress(pool.address, ETHPToken, NESTContract.address, 0);
 
 	// 增加抵押
 	await supplement(pool.address, NESTContract.address, ETHPToken, ETH("2"), "10000000000000000");
