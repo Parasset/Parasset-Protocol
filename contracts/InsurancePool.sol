@@ -26,9 +26,9 @@ contract InsurancePool {
 	// 最新赎回节点, 标的资产地址=>最新赎回时间
     mapping(address=>uint256) latestTime;
 	// 赎回周期
-	uint256 redemptionCycle = 5 minutes;
+	uint256 public redemptionCycle = 5 minutes;
 	// 等待周期
-	uint256 waitCycle = 10 minutes;
+	uint256 public waitCycle = 10 minutes;
 	// 冻结保险份额,用户地址=>标的资产地址=>冻结份额数据
 	mapping(address=>mapping(address=>Frozen)) frozenIns;
 	struct Frozen {
@@ -42,6 +42,9 @@ contract InsurancePool {
     // 状态
     uint8 public flag;      // = 0: 停止
                             // = 1: 启动
+                            // = 2: 仅赎回
+    // 手续费率
+    uint256 feeRate = 2;
 
     event Destroy(address token, uint256 amount, address account);
     event Issuance(address token, uint256 amount, address account);
@@ -69,6 +72,11 @@ contract InsurancePool {
         _;
     }
 
+    modifier noStop() {
+        require(flag != 0, "Log:InsurancePool:!0");
+        _;
+    }
+
     //---------view---------
 
     // 查询管理员地址
@@ -91,6 +99,11 @@ contract InsurancePool {
         return balances[add][token];
     }
 
+    // 查询手续费率
+    function getFeeRate() public view returns(uint256) {
+        return feeRate;
+    }
+
     // 查询保险池地址
     function getMortgagePool() public view returns(address) {
         return address(mortgagePool);
@@ -107,6 +120,18 @@ contract InsurancePool {
         if (now > time) {
             uint256 subTime = now.sub(time).div(waitCycle);
             startTime = time.add(waitCycle.mul(uint256(1).add(subTime)));
+        } else {
+            startTime = time;
+        }
+        endTime = startTime.add(redemptionCycle);
+    }
+
+    // 查询赎回时间段-前期
+    function getRedemptionTimeFront(address token) public view returns(uint256 startTime, uint256 endTime) {
+        uint256 time = latestTime[token];
+        if (now > time) {
+            uint256 subTime = now.sub(time).div(waitCycle);
+            startTime = time.add(waitCycle.mul(subTime));
         } else {
             startTime = time;
         }
@@ -138,6 +163,7 @@ contract InsurancePool {
             return balanceSelf.sub(frozenInfo.amount);
         }
     }
+
 
 	// 小数转换
     // inputToken:输入资产地址
@@ -174,6 +200,11 @@ contract InsurancePool {
         latestTime[token] = now.add(waitCycle);
     }
 
+    // 设置手续费率
+    function setFeeRate(uint256 num) public onlyGovernance {
+        feeRate = num;
+    }
+
     //---------transaction---------
 
     // 设置管理员
@@ -186,13 +217,14 @@ contract InsurancePool {
     // amount:pToken数量
     function exchangePTokenToUnderlying(address pToken, 
     	                                uint256 amount) public whenActive {
-    	uint256 fee = amount.mul(2).div(1000);
+    	uint256 fee = amount.mul(feeRate).div(1000);
     	ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), amount);
         address underlyingToken = mortgagePool.getPTokenToUnderlying(pToken);
+        uint256 pTokenAmount = getDecimalConversion(pToken, amount.sub(fee), underlyingToken);
     	if (underlyingToken != address(0x0)) {
-    		ERC20(underlyingToken).safeTransfer(address(msg.sender), getDecimalConversion(pToken, amount.sub(fee), underlyingToken));
+    		ERC20(underlyingToken).safeTransfer(address(msg.sender), pTokenAmount);
     	} else {
-    		payEth(address(msg.sender), getDecimalConversion(pToken, amount.sub(fee), underlyingToken));
+    		payEth(address(msg.sender), pTokenAmount);
     	}
     	// 消除负账户
         _eliminate(pToken, underlyingToken);
@@ -203,7 +235,7 @@ contract InsurancePool {
     // amount:标的资产数量
     function exchangeUnderlyingToPToken(address token, 
     	                                uint256 amount) public payable whenActive {
-    	uint256 fee = amount.mul(2).div(1000);
+    	uint256 fee = amount.mul(feeRate).div(1000);
     	if (token != address(0x0)) {
     		require(msg.value == 0, "Log:InsurancePool:msg.value!=0");
     		ERC20(token).safeTransferFrom(address(msg.sender), address(this), amount);
@@ -263,11 +295,12 @@ contract InsurancePool {
     // token:标的资产地址，USDT、ETH...
     // amount:赎回份额
     function redemptionIns(address token, 
-    	                   uint256 amount) public whenActive {
+    	                   uint256 amount) public noStop {
         uint256 tokenBalance;
         address pToken = mortgagePool.getUnderlyingToPToken(token);
     	updateLatestTime(token);
-    	require(now >= latestTime[token].sub(waitCycle) && now <= latestTime[token].sub(waitCycle).add(redemptionCycle), "Log:InsurancePool:!time");
+        uint256 tokenTime = latestTime[token];
+    	require(now >= tokenTime.sub(waitCycle) && now <= tokenTime.sub(waitCycle).add(redemptionCycle), "Log:InsurancePool:!time");
     	Frozen storage frozenInfo = frozenIns[address(msg.sender)][token];
     	if (now > frozenInfo.time) {
     		frozenInfo.amount = 0;
@@ -279,8 +312,10 @@ contract InsurancePool {
     	} else {
     		tokenBalance = address(this).balance;
     	}
-    	uint256 allValue = tokenBalance.add(getDecimalConversion(pToken, pTokenBalance, token))
-                           .sub(getDecimalConversion(pToken, insNegative[token], token));
+        uint256 allBalance = tokenBalance.add(getDecimalConversion(pToken, pTokenBalance, token));
+        uint256 negativeBalance = getDecimalConversion(pToken, insNegative[token], token);
+        require(negativeBalance <= allBalance, "Log:InsurancePool:allBalanceNotEnough");
+    	uint256 allValue = allBalance.sub(negativeBalance);
     	uint256 insTotal = totalSupply[token];
     	uint256 underlyingAmount = amount.mul(allValue).div(insTotal);
 

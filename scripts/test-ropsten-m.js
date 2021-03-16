@@ -27,10 +27,10 @@ async function main() {
 	// await setInfo(MortgagePool.address, USDTContract.address, PUSDT.address);
 	// await setInfo(MortgagePool.address, ETHAddress, PETH.address);
 
-	// // 授权NEST给MortgagePool
-	// await approve(NESTContract.address, MortgagePool.address, ETH("999999"));
-	// // 铸币
-	// await coin(MortgagePool.address, NESTContract.address, PETH.address, ETH("4"), "50", "20000000000000000");
+	// 授权NEST给MortgagePool
+	await approve(NESTContract.address, MortgagePool.address, ETH("999999"));
+	// 铸币
+	await coin(MortgagePool.address, NESTContract.address, PETH.address, ETH("4"), "50", "10000000000000000");
 }
 
 // We recommend this pattern to be able to use async/await everywhere

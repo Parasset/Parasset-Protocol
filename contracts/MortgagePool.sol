@@ -57,6 +57,8 @@ contract MortgagePool {
         bool created;
     }
 
+    event FeeValue(address pToken, uint256 value);
+
 	constructor (address factoryAddress) public {
         pTokenFactory = IPTokenFactory(factoryAddress);
         governance = pTokenFactory.getGovernance();
@@ -89,8 +91,8 @@ contract MortgagePool {
     function getFee(uint256 parassetAssets, 
     	            uint256 blockHeight,
     	            uint256 rate) public view returns(uint256) {
-    	uint256 top = parassetAssets.mul(r0).mul(rate).mul(block.number.sub(blockHeight));
-    	uint256 bottom = oneYear.mul(1 ether).mul(1 ether);
+    	uint256 top = parassetAssets.mul(r0).mul(uint256(1).add(uint256(3).mul(rate))).mul(block.number.sub(blockHeight));
+    	uint256 bottom = oneYear.mul(1 ether).mul(1 ether).mul(100);
     	return top.div(bottom);
     }
 
@@ -329,6 +331,7 @@ contract MortgagePool {
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
             insurancePool.eliminate(pToken, pTokenToUnderlying[pToken]);
+            emit FeeValue(pToken, fee);
     	}
         // 计算铸币资产，增发P资产
         uint256 pTokenAmount = amount.mul(pTokenPrice).mul(rate).div(tokenPrice.mul(100));
@@ -375,11 +378,11 @@ contract MortgagePool {
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
             insurancePool.eliminate(pToken, pTokenToUnderlying[pToken]);
+            emit FeeValue(pToken, fee);
     	}
     	pLedger.mortgageAssets = pLedger.mortgageAssets.add(amount);
     	pLedger.blockHeight = block.number;
         uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
-        require(mortgageRate > 0, "Log:MortgagePool:mortgageRate>0");
         pLedger.rate = mortgageRate;
         if (pLedger.created == false) {
             ledgerArray[pToken][mortgageToken].push(address(msg.sender));
@@ -408,6 +411,7 @@ contract MortgagePool {
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
             insurancePool.eliminate(pToken, pTokenToUnderlying[pToken]);
+            emit FeeValue(pToken, fee);
     	}
     	pLedger.mortgageAssets = pLedger.mortgageAssets.sub(amount);
     	pLedger.blockHeight = block.number;
@@ -448,6 +452,7 @@ contract MortgagePool {
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
             insurancePool.eliminate(pToken, pTokenToUnderlying[pToken]);
+            emit FeeValue(pToken, fee);
         }
         pLedger.parassetAssets = parassetAssets.add(amount);
         pLedger.blockHeight = block.number;
@@ -483,11 +488,11 @@ contract MortgagePool {
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), amount.add(fee));
             // 消除负账户
             insurancePool.eliminate(pToken, uToken);
+            emit FeeValue(pToken, fee);
         }
         pLedger.parassetAssets = parassetAssets.sub(amount);
         pLedger.blockHeight = block.number;
         uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
-        require(mortgageRate > 0, "Log:MortgagePool:mortgageRate>0");
         pLedger.rate = mortgageRate;
         // 销毁p资产
         insurancePool.destroyPToken(pToken, amount, uToken);
@@ -515,6 +520,7 @@ contract MortgagePool {
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), parassetAssets.add(fee));
             // 消除负账户
             insurancePool.eliminate(pToken, uToken);
+            emit FeeValue(pToken, fee);
         }
         // 销毁p资产
         insurancePool.destroyPToken(pToken, parassetAssets, uToken);
