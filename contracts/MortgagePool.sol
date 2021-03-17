@@ -92,7 +92,7 @@ contract MortgagePool {
     	            uint256 blockHeight,
     	            uint256 rate) public view returns(uint256) {
     	uint256 top = parassetAssets.mul(r0).mul(uint256(1).add(uint256(3).mul(rate))).mul(block.number.sub(blockHeight));
-    	uint256 bottom = oneYear.mul(1 ether).mul(1 ether).mul(100);
+    	uint256 bottom = oneYear.mul(1 ether).mul(100);
     	return top.div(bottom);
     }
 

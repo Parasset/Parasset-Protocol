@@ -26,9 +26,9 @@ contract InsurancePool {
 	// 最新赎回节点, 标的资产地址=>最新赎回时间
     mapping(address=>uint256) latestTime;
 	// 赎回周期
-	uint256 public redemptionCycle = 5 minutes;
+	uint256 public redemptionCycle = 15 minutes;
 	// 等待周期
-	uint256 public waitCycle = 10 minutes;
+	uint256 public waitCycle = 30 minutes;
 	// 冻结保险份额,用户地址=>标的资产地址=>冻结份额数据
 	mapping(address=>mapping(address=>Frozen)) frozenIns;
 	struct Frozen {
@@ -114,7 +114,7 @@ contract InsurancePool {
         return latestTime[token];
     }
 
-    // 查询赎回时间段-实时
+    // 查询赎回时间段-下期
     function getRedemptionTime(address token) public view returns(uint256 startTime, uint256 endTime) {
         uint256 time = latestTime[token];
         if (now > time) {
@@ -133,7 +133,7 @@ contract InsurancePool {
             uint256 subTime = now.sub(time).div(waitCycle);
             startTime = time.add(waitCycle.mul(subTime));
         } else {
-            startTime = time;
+            startTime = time.sub(waitCycle);
         }
         endTime = startTime.add(redemptionCycle);
     }
@@ -268,16 +268,18 @@ contract InsurancePool {
     	}
     	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
     	if (token != address(0x0)) {
-    		tokenBalance = ERC20(token).balanceOf(address(this));
+    		tokenBalance = getDecimalConversion(token, ERC20(token).balanceOf(address(this)), pToken);
     	} else {
     		require(msg.value == amount, "Log:InsurancePool:!msg.value");
-    		tokenBalance = address(this).balance;
+    		tokenBalance = address(this).balance.sub(amount);
     	}
     	uint256 insAmount = getDecimalConversion(token, amount, pToken);
     	uint256 insTotal = totalSupply[token];
-    	if (insTotal != 0 && tokenBalance.add(pTokenBalance) > insNegative[token]) {
-            uint256 allValue = tokenBalance.add(pTokenBalance).sub(insNegative[token]);
+        uint256 allBalance = tokenBalance.add(pTokenBalance);
+    	if (insTotal != 0 && allBalance > insNegative[token]) {
+            uint256 allValue = allBalance.sub(insNegative[token]);
     		insAmount = getDecimalConversion(token, amount, pToken).mul(insTotal).div(allValue);
+
     	}
     	// 转入标的资产
     	if (token != address(0x0)) {
@@ -308,14 +310,13 @@ contract InsurancePool {
     	require(pToken != address(0x0), "Log:InsurancePool:!pToken");
     	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
     	if (token != address(0x0)) {
-    		tokenBalance = ERC20(token).balanceOf(address(this));
+    		tokenBalance = getDecimalConversion(token, ERC20(token).balanceOf(address(this)), pToken);
     	} else {
     		tokenBalance = address(this).balance;
     	}
-        uint256 allBalance = tokenBalance.add(getDecimalConversion(pToken, pTokenBalance, token));
-        uint256 negativeBalance = getDecimalConversion(pToken, insNegative[token], token);
-        require(negativeBalance <= allBalance, "Log:InsurancePool:allBalanceNotEnough");
-    	uint256 allValue = allBalance.sub(negativeBalance);
+        uint256 allBalance = tokenBalance.add(pTokenBalance);
+        require(insNegative[token] <= allBalance, "Log:InsurancePool:allBalanceNotEnough");
+    	uint256 allValue = allBalance.sub(insNegative[token]);
     	uint256 insTotal = totalSupply[token];
     	uint256 underlyingAmount = amount.mul(allValue).div(insTotal);
 
@@ -326,11 +327,10 @@ contract InsurancePool {
     	// 转出标的资产
     	if (token != address(0x0)) {
             if (tokenBalance >= underlyingAmount) {
-                ERC20(token).safeTransfer(address(msg.sender), underlyingAmount);
+                ERC20(token).safeTransfer(address(msg.sender), getDecimalConversion(pToken, underlyingAmount, token));
             } else {
-                ERC20(token).safeTransfer(address(msg.sender), tokenBalance);
-                ERC20(pToken).safeTransfer(address(msg.sender), 
-                                           getDecimalConversion(token, underlyingAmount.sub(tokenBalance), pToken));
+                ERC20(token).safeTransfer(address(msg.sender), getDecimalConversion(pToken, tokenBalance, token));
+                ERC20(pToken).safeTransfer(address(msg.sender), underlyingAmount.sub(tokenBalance));
             }
     	} else {
             if (tokenBalance >= underlyingAmount) {
