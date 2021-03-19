@@ -61,8 +61,11 @@ contract PriceController {
     function getPriceForPToken(address token, 
                                address uToken,
                                address pToken,
-                               address payback) public payable returns (uint256 tokenPrice, 
-                                                                        uint256 pTokenPrice) {
+                               address payback) 
+        public
+        payable
+        returns (uint256 tokenPrice, 
+                 uint256 pTokenPrice) {
         uint256 fee = getPriceSingleFee();
         if (token == address(0x0)) {
             (,,uint256 avg,,) = quary.queryPriceAvgVola{value:msg.value}(uToken, payback);

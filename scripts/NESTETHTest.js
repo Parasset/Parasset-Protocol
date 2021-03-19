@@ -57,40 +57,35 @@ async function main() {
 	await setPriceController(pool.address,PriceController.address);
 
 	// 铸币
-	// await coin(pool.address, NESTContract.address, ETHPToken, ETH("12"), "50", "10000000000000000");
-	// const ledger = await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
+	await coin(pool.address, NESTContract.address, ETHPToken, ETH("12"), "50", "10000000000000000");
+	const ledger = await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
 
-	// // await getLedgerArrayNum(pool.address, ETHPToken, NESTContract.address);
-	// // await getLedgerAddress(pool.address, ETHPToken, NESTContract.address, 0);
+	// await getLedgerArrayNum(pool.address, ETHPToken, NESTContract.address);
+	// await getLedgerAddress(pool.address, ETHPToken, NESTContract.address, 0);
 
-	// // 增加抵押
-	// await supplement(pool.address, NESTContract.address, ETHPToken, ETH("2"), "10000000000000000");
-	// await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
-	// await ERC20Balance(ETHPToken, insurancePool.address);
-	// // 减少抵押
-	// await decrease(pool.address, NESTContract.address, ETHPToken, ETH("1"), "10000000000000000");
-	// await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
-	// await ERC20Balance(ETHPToken, insurancePool.address);
-	// // 新增铸币
-	// await increaseCoinage(pool.address, NESTContract.address, ETHPToken, ETH("1"), "10000000000000000");
-	// await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
-	// // 减少铸币
-	// await reducedCoinage(pool.address, NESTContract.address, ETHPToken, ETH("1"), "10000000000000000");
-	// await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
-	// // 赎回
-	// // await redemptionAll(pool.address, NESTContract.address, USDTPToken);
-	// // await getLedger(pool.address, USDTPToken, NESTContract.address);
-	// await ERC20Balance(ETHPToken, insurancePool.address);
+	// 增加抵押
+	await supplement(pool.address, NESTContract.address, ETHPToken, ETH("2"), "10000000000000000");
+	await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
+	await ERC20Balance(ETHPToken, insurancePool.address);
+	// 减少抵押
+	await decrease(pool.address, NESTContract.address, ETHPToken, ETH("1"), "10000000000000000");
+	await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
+	await ERC20Balance(ETHPToken, insurancePool.address);
+	// 新增铸币
+	await increaseCoinage(pool.address, NESTContract.address, ETHPToken, ETH("1"), "10000000000000000");
+	await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
+	// 减少铸币
+	await reducedCoinage(pool.address, NESTContract.address, ETHPToken, ETH("1"), "10000000000000000");
+	await getLedger(pool.address, ETHPToken, NESTContract.address, accounts[0].address);
+	// 赎回
+	// await redemptionAll(pool.address, NESTContract.address, USDTPToken);
+	// await getLedger(pool.address, USDTPToken, NESTContract.address);
+	await ERC20Balance(ETHPToken, insurancePool.address);
 
 	// 认购保险
 	await approve(ETHPToken, insurancePool.address, ETH("999999"));
 	await getBalances(insurancePool.address, ETHAddress, accounts[0].address);
-	await getTotalSupply(insurancePool.address,ETHAddress);
-	await subscribeIns(insurancePool.address, ETHAddress, ETH(1), ETH(1));
-	await getTotalSupply(insurancePool.address,ETHAddress);
-	await getBalances(insurancePool.address, ETHAddress, accounts[0].address);
-	await subscribeIns(insurancePool.address, ETHAddress, "100000000000000000", "100000000000000000");
-	await getTotalSupply(insurancePool.address,ETHAddress);
+	await subscribeIns(insurancePool.address, ETHAddress, ETH(2), ETH(2));
 	await getBalances(insurancePool.address, ETHAddress, accounts[0].address);
 	// 兑换
 	await ERC20Balance(ETHPToken, insurancePool.address);
