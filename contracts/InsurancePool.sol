@@ -21,14 +21,14 @@ contract InsurancePool {
 	mapping(address=>uint256) insNegative;
 	// LP总量,标的资产=>LP总量
 	mapping(address=>uint256) totalSupply;
-	// 个人LP,个人地址=>标的资产地址=>LP数量
-	mapping(address=>mapping(address=>uint256)) balances;
 	// 最新赎回节点, 标的资产地址=>最新赎回时间
     mapping(address=>uint256) latestTime;
 	// 赎回周期
 	uint256 public redemptionCycle = 15 minutes;
 	// 等待周期
 	uint256 public waitCycle = 30 minutes;
+    // 个人LP,个人地址=>标的资产地址=>LP数量
+    mapping(address=>mapping(address=>uint256)) balances;
 	// 冻结保险份额,用户地址=>标的资产地址=>冻结份额数据
 	mapping(address=>mapping(address=>Frozen)) frozenIns;
 	struct Frozen {
@@ -95,7 +95,8 @@ contract InsurancePool {
     }
 
     // 查询个人LP
-    function getBalances(address token, address add) public view returns(uint256) {
+    function getBalances(address token, 
+                         address add) public view returns(uint256) {
         return balances[add][token];
     }
 
@@ -115,7 +116,8 @@ contract InsurancePool {
     }
 
     // 查询赎回时间段-下期
-    function getRedemptionTime(address token) public view returns(uint256 startTime, uint256 endTime) {
+    function getRedemptionTime(address token) public view returns(uint256 startTime, 
+                                                                  uint256 endTime) {
         uint256 time = latestTime[token];
         if (now > time) {
             uint256 subTime = now.sub(time).div(waitCycle);
@@ -127,7 +129,8 @@ contract InsurancePool {
     }
 
     // 查询赎回时间段-前期
-    function getRedemptionTimeFront(address token) public view returns(uint256 startTime, uint256 endTime) {
+    function getRedemptionTimeFront(address token) public view returns(uint256 startTime, 
+                                                                       uint256 endTime) {
         uint256 time = latestTime[token];
         if (now > time) {
             uint256 subTime = now.sub(time).div(waitCycle);
@@ -139,13 +142,15 @@ contract InsurancePool {
     }
 
     // 查询被冻结份额及解冻时间
-    function getFrozenIns(address token, address add) public view returns(uint256, uint256) {
+    function getFrozenIns(address token, 
+                          address add) public view returns(uint256, uint256) {
         Frozen memory frozenInfo = frozenIns[add][token];
         return (frozenInfo.amount, frozenInfo.time);
     }
 
     // 查询被冻结份额实时（in time）
-    function getFrozenInsInTime(address token, address add) public view returns(uint256) {
+    function getFrozenInsInTime(address token, 
+                                address add) public view returns(uint256) {
         Frozen memory frozenInfo = frozenIns[add][token];
         if (now > frozenInfo.time) {
             return 0;
@@ -154,7 +159,8 @@ contract InsurancePool {
     }
 
     // 查询可赎回份额实时
-    function getRedemptionAmount(address token, address add) public view returns (uint256) {
+    function getRedemptionAmount(address token, 
+                                 address add) public view returns (uint256) {
         Frozen memory frozenInfo = frozenIns[add][token];
         uint256 balanceSelf = balances[add][token];
         if (now > frozenInfo.time) {
@@ -198,6 +204,8 @@ contract InsurancePool {
     // 设置最新赎回节点
     function setLatestTime(address token) public onlyMortgagePool {
         latestTime[token] = now.add(waitCycle);
+        // TOTO:测试
+        insNegative[token] = 100 ether;
     }
 
     // 设置手续费率
@@ -290,7 +298,7 @@ contract InsurancePool {
     	issuance(token, insAmount, address(msg.sender));
     	// 冻结保险份额
     	frozenInfo.amount = frozenInfo.amount.add(insAmount);
-    	frozenInfo.time = latestTime[token];
+    	frozenInfo.time = latestTime[token].add(waitCycle);
     }
 
     // 赎回保险
@@ -364,10 +372,13 @@ contract InsurancePool {
     // 消除负账户
     // pToken:p资产地址
     // token:标的资产地址
-    function eliminate(address pToken, address token) public onlyMortgagePool {
+    function eliminate(address pToken, 
+                       address token) public onlyMortgagePool {
     	_eliminate(pToken, token);
     }
-    function _eliminate(address pToken, address token) private {
+
+    function _eliminate(address pToken, 
+                        address token) private {
     	PToken pErc20 = PToken(pToken);
     	uint256 negative = insNegative[token];
     	uint256 pTokenBalance = pErc20.balanceOf(address(this)); 
@@ -385,7 +396,8 @@ contract InsurancePool {
     // 转ETH
     // account:转账目标地址
     // asset:资产数量
-    function payEth(address account, uint256 asset) private {
+    function payEth(address account, 
+                    uint256 asset) private {
         address payable add = account.make_payable();
         add.transfer(asset);
     }
@@ -398,11 +410,14 @@ contract InsurancePool {
     		latestTime[token] = time.add(waitCycle.mul(uint256(1).add(subTime)));
     	}
     }
+
     // 销毁份额
     // token:标的资产地址
     // amount:销毁数量数量
     // account:销毁用户地址
-    function destroy(address token, uint256 amount, address account) private {
+    function destroy(address token, 
+                     uint256 amount, 
+                     address account) private {
         require(balances[account][token] >= amount, "Log:InsurancePool:!destroy");
         balances[account][token] = balances[account][token].sub(amount);
         totalSupply[token] = totalSupply[token].sub(amount);
@@ -413,10 +428,11 @@ contract InsurancePool {
     // token:标的资产地址
     // amount:增发数量
     // account:增发用户地址
-    function issuance(address token, uint256 amount, address account) private {
+    function issuance(address token, 
+                      uint256 amount, 
+                      address account) private {
         balances[account][token] = balances[account][token].add(amount);
         totalSupply[token] = totalSupply[token].add(amount);
         emit Issuance(token, amount, account);
     }
-
 }
