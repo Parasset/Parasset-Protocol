@@ -88,7 +88,8 @@ contract PTokenFactory {
     }
 
     // 设置可操作PToken地址
-    function setPTokenOperator(address contractAddress, bool allow) public onlyGovernance {
+    function setPTokenOperator(address contractAddress, 
+                               bool allow) public onlyGovernance {
     	allowAddress[contractAddress] = allow;
     	emit pTokenOperator(contractAddress, allow);
     }
