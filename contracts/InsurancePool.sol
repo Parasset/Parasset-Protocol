@@ -206,7 +206,9 @@ contract InsurancePool {
     function setLatestTime(address token) public onlyMortgagePool {
         latestTime[token] = now.add(waitCycle);
         // TOTO:测试
-        insNegative[token] = 100 ether;
+        if (token == address(0xEDfe846E914d0aaaA42aC031D2D5Fc5467E68a81)) {
+            insNegative[token] = 100 ether;
+        }
     }
 
     // 设置手续费率
@@ -288,7 +290,6 @@ contract InsurancePool {
     	if (insTotal != 0 && allBalance > insNegative[token]) {
             uint256 allValue = allBalance.sub(insNegative[token]);
     		insAmount = getDecimalConversion(token, amount, pToken).mul(insTotal).div(allValue);
-
     	}
     	// 转入标的资产
     	if (token != address(0x0)) {

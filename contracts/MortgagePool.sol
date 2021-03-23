@@ -91,9 +91,10 @@ contract MortgagePool {
     function getFee(uint256 parassetAssets, 
     	            uint256 blockHeight,
     	            uint256 rate) public view returns(uint256) {
-    	uint256 top = parassetAssets.mul(r0).mul(uint256(1).add(uint256(3).mul(rate))).mul(block.number.sub(blockHeight));
-    	uint256 bottom = oneYear.mul(1 ether).mul(100);
-    	return top.div(bottom);
+        uint256 topOne = parassetAssets.mul(r0).mul(block.number.sub(blockHeight));
+        uint256 topTwo = parassetAssets.mul(r0).mul(block.number.sub(blockHeight)).mul(uint256(3).mul(rate));
+    	uint256 bottom = oneYear.mul(1 ether);
+    	return topOne.div(bottom).add(topTwo.div(bottom.mul(1 ether)));
     }
 
     // 计算抵押率
@@ -108,7 +109,7 @@ contract MortgagePool {
         if (mortgageAssets == 0 || pTokenPrice == 0) {
             return 0;
         }
-    	return parassetAssets.mul(tokenPrice).mul(100).div(pTokenPrice.mul(mortgageAssets));
+    	return parassetAssets.mul(tokenPrice).mul(1 ether).div(pTokenPrice.mul(mortgageAssets));
     }
 
     // 获取当前债仓实时数据
@@ -139,12 +140,13 @@ contract MortgagePool {
                                                pLedger.parassetAssets.add(fee), 
                                                tokenPriceAmount,
                                                pTokenPrice);
-        if (mortgageRate >= maxRateNum) {
+        uint256 maxRateEther = maxRateNum.mul(0.01 ether);
+        if (mortgageRate >= maxRateEther) {
             maxSubM = 0;
             maxAddP = 0;
         } else {
-            maxSubM = pLedger.mortgageAssets.sub(pLedger.parassetAssets.add(fee).mul(tokenPriceAmount).mul(100).div(maxRateNum.mul(pTokenPrice)));
-            maxAddP = pLedger.mortgageAssets.mul(pTokenPrice).mul(maxRateNum).div(uint256(100).mul(tokenPriceAmount)).sub(pLedger.parassetAssets.add(fee));
+            maxSubM = pLedger.mortgageAssets.sub(pLedger.parassetAssets.add(fee).mul(tokenPriceAmount).mul(1 ether).div(maxRateEther.mul(pTokenPrice)));
+            maxAddP = pLedger.mortgageAssets.mul(pTokenPrice).mul(maxRateEther).div(uint256(1 ether).mul(tokenPriceAmount)).sub(pLedger.parassetAssets.add(fee));
         }
     }
     
@@ -272,13 +274,13 @@ contract MortgagePool {
     // 设置平仓线
     function setLine(address mortgageToken, 
                      uint256 num) public onlyGovernance {
-        line[mortgageToken] = num;
+        line[mortgageToken] = num.mul(0.01 ether);
     }
 
     // 设置最高抵押率
     function setMaxRate(address token, 
                         uint256 num) public onlyGovernance {
-    	maxRate[token] = num;
+    	maxRate[token] = num.mul(0.01 ether);
     }
 
     // 设置价格合约地址
@@ -587,6 +589,7 @@ contract MortgagePool {
     	pLedger.mortgageAssets = 0;
         pLedger.parassetAssets = 0;
         pLedger.blockHeight = 0;
+        pLedger.rate = 0;
     	// 转移抵押资产
     	if (mortgageToken != address(0x0)) {
     		ERC20(mortgageToken).safeTransfer(address(msg.sender), mortgageAssets);
