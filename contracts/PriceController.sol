@@ -66,13 +66,16 @@ contract PriceController {
         uint256 fee = getPriceSingleFee();
         if (token == address(0x0)) {
             (,,uint256 avg,,) = quary.queryPriceAvgVola{value:msg.value}(uToken, payback);
+            require(avg > 0, "Log:PriceController:!avg");
             return (1 ether, getDecimalConversion(uToken, avg, pToken));
         } else if (uToken == address(0x0)) {
             (,,uint256 avg,,) = quary.queryPriceAvgVola{value:msg.value}(token, payback);
+            require(avg > 0, "Log:PriceController:!avg");
             return (getDecimalConversion(uToken, avg, pToken), 1 ether);
         }
         (,,uint256 avg1,,) = quary.queryPriceAvgVola{value:fee}(token, payback);
         (,,uint256 avg2,,) = quary.queryPriceAvgVola{value:uint256(msg.value).sub(fee)}(uToken, payback);
+        require(avg1 > 0 && avg2 > 0, "Log:PriceController:!avg");
         return (avg1, getDecimalConversion(uToken, avg2, pToken));
     }
 }

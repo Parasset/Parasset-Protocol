@@ -85,7 +85,12 @@ async function main() {
 	// 认购保险
 	await approve(ETHPToken, insurancePool.address, ETH("999999"));
 	await getBalances(insurancePool.address, ETHAddress, accounts[0].address);
-	await subscribeIns(insurancePool.address, ETHAddress, ETH(2), ETH(2));
+	await getTotalSupply(insurancePool.address,ETHAddress);
+	await subscribeIns(insurancePool.address, ETHAddress, ETH(1), ETH(1));
+	await getTotalSupply(insurancePool.address,ETHAddress);
+	await getBalances(insurancePool.address, ETHAddress, accounts[0].address);
+	await subscribeIns(insurancePool.address, ETHAddress, "100000000000000000", "100000000000000000");
+	await getTotalSupply(insurancePool.address,ETHAddress);
 	await getBalances(insurancePool.address, ETHAddress, accounts[0].address);
 	// 兑换
 	await ERC20Balance(ETHPToken, insurancePool.address);

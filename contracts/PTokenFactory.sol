@@ -81,7 +81,7 @@ contract PTokenFactory {
 
     // 创建PToken
     function createPtoken(string memory name) public onlyGovernance {
-    	PToken pToken = new PToken(strConcat("P_", name), strConcat("P_", name));
+    	PToken pToken = new PToken(strConcat("PToken_", name), strConcat("P", name));
     	pTokenMapping[address(pToken)] = true;
     	pTokenList.push(address(pToken));
     	emit createLog(address(pToken));

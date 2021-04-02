@@ -224,6 +224,30 @@ NestQuery | 0x364b22983ed7EABb4de94924D7e17411FDE674Ae | NEST 价格合约
 PUSDT | 0x1a8A52074932Af7333626a3e757524E3667D78C5 | PUSDT合约
 PETH | 0x282f780533B748a256872E5855d3d84C3bf64Ac0 | PETH合约
 
+#### V1.9
+
+修正合约审计中的问题
+
+价格：
+
+2USDT=1ETH
+
+3NEST=1ETH
+
+保险赎回时间：30分钟赎回一次，每次赎回时间15分钟
+
+合约 | 地址 | 描述
+---|---|---
+NestContract | 0xd791228a2eeb931739A5faC4a41af55fA194E08E | NEST Token合约
+USDTContract | 0x955702776C7624f3EF4B49d6900946ED4f403d9A | USDT Token 合约
+PTokenFactory | 0xe635F9d3e3EFE67Ad42898F38d2E373270CD58c3 | P资产工厂合约
+MortgagePool | 0x3048bC3cd8dbCE68c7b4E6D5E0c117bD2885322D | 抵押池合约
+InsurancePool | 0xe0bc8c4f65f08ab71437bdA1f261d9E6A96A6F66 | 保险池合约
+PriceController | 0x32ED66917687131f3852Fc64A638b8e8D9f3b5aa | 价格调用合约
+NestQuery | 0xbF6dBeF11649fa1b55f850fd003ff4c3B4E5C025 | NEST 价格合约
+PUSDT | 0xffaa58c0bc5069E19FcCa94aDb70EA63578F9860 | PUSDT合约
+PETH | 0x64B100bDA18c2A5AF4A370547adaB2712Dcf41dD | PETH合约
+
 ### .private.json
 
 >将sample.private.json更名为.private.json
