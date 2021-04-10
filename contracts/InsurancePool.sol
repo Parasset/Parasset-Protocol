@@ -340,7 +340,7 @@ contract InsurancePool is ReentrancyGuard {
 
         // 销毁份额
         destroy(token, amount, address(msg.sender));
-        require(balances[address(msg.sender)][pToken] >= frozenInfo.amount, "Log:InsurancePool:frozen");
+        require(balances[address(msg.sender)][token] >= frozenInfo.amount, "Log:InsurancePool:frozen");
     	
     	// 转出标的资产
     	if (token != address(0x0)) {
