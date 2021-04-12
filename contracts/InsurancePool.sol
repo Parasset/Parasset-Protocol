@@ -205,10 +205,6 @@ contract InsurancePool is ReentrancyGuard {
     // 设置最新赎回节点
     function setLatestTime(address token) public onlyMortgagePool {
         latestTime[token] = now.add(waitCycle);
-        // TOTO:测试
-        if (token == address(0xEDfe846E914d0aaaA42aC031D2D5Fc5467E68a81)) {
-            insNegative[token] = 100 ether;
-        }
     }
 
     // 设置手续费率
