@@ -32,7 +32,7 @@ contract MortgagePool is ReentrancyGuard {
     mapping(address=>mapping(address=>address[])) ledgerArray;
     // 抵押资产=>最高抵押率
     mapping(address=>uint256) maxRate;
-    // 抵押资产=>平仓线
+    // 抵押资产=>清算线
     mapping(address=>uint256) line;
     // 价格合约
     IPriceController quary;
@@ -206,7 +206,7 @@ contract MortgagePool is ReentrancyGuard {
     	return maxRate[mortgageToken];
     }
 
-    // 查看平仓线
+    // 查看清算线
     function getLine(address mortgageToken) external view returns(uint256) {
         return line[mortgageToken];
     }
@@ -271,7 +271,7 @@ contract MortgagePool is ReentrancyGuard {
     	oneYear = num;
     }
 
-    // 设置平仓线
+    // 设置清算线
     function setLine(address mortgageToken, 
                      uint256 num) public onlyGovernance {
         line[mortgageToken] = num.mul(0.01 ether);

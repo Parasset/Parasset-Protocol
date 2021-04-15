@@ -266,10 +266,16 @@ PETH | 0x57eE2A4Ee1454A9825c5664085bf402E5f574c80 | PETH合约
 
 #### V1.1
 
+参数设置：
+
+nest抵押率上限40%，nest清算线：50%
+
+ETH抵押率上限70%，ETH清算线：84%
+
 合约 | 地址 | 描述
 ---|---|---
-MortgagePool | 0x012Cbf8dD0565081418718C35704212F58B3623b | 抵押池合约
-InsurancePool | 0xB5d13aa3eaA5DC1B7c6163A57dcc3da9f2c92bc3 | 保险池合约
+MortgagePool | 0xdabC536498E071abb77C8F3B0F9A252CC512e796 | 抵押池合约
+InsurancePool | 0xb560623cc0e1213BCbc72f9b71dD413bD8970e31 | 保险池合约
 
 ### .private.json
 

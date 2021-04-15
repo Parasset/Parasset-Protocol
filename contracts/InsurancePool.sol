@@ -215,13 +215,13 @@ contract InsurancePool is ReentrancyGuard {
     // 设置赎回周期
     function setRedemptionCycle(uint256 num) public onlyGovernance {
         require(num > 0, "Log:InsurancePool:!zero");
-        redemptionCycle = num;
+        redemptionCycle = num * 1 days;
     }
 
     // 设置等待时间
     function setWaitCycle(uint256 num) public onlyGovernance {
         require(num > 0, "Log:InsurancePool:!zero");
-        waitCycle = num;
+        waitCycle = num * 1 days;
     }
 
     //---------transaction---------
@@ -302,7 +302,8 @@ contract InsurancePool is ReentrancyGuard {
     	uint256 insAmount = getDecimalConversion(token, amount, pToken);
     	uint256 insTotal = totalSupply[token];
         uint256 allBalance = tokenBalance.add(pTokenBalance);
-    	if (insTotal != 0 && allBalance > insNegative[token]) {
+        require(allBalance > insNegative[token], "Log:InsurancePool:allBalanceNotEnough");
+    	if (insTotal != 0) {
             uint256 allValue = allBalance.sub(insNegative[token]);
     		insAmount = getDecimalConversion(token, amount, pToken).mul(insTotal).div(allValue);
     	}
@@ -341,7 +342,7 @@ contract InsurancePool is ReentrancyGuard {
     		tokenBalance = address(this).balance;
     	}
         uint256 allBalance = tokenBalance.add(pTokenBalance);
-        require(insNegative[token] <= allBalance, "Log:InsurancePool:allBalanceNotEnough");
+        require(insNegative[token] < allBalance, "Log:InsurancePool:allBalanceNotEnough");
     	uint256 allValue = allBalance.sub(insNegative[token]);
     	uint256 insTotal = totalSupply[token];
     	uint256 underlyingAmount = amount.mul(allValue).div(insTotal);
