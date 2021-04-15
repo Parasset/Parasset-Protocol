@@ -69,7 +69,7 @@ InsurancePool | 0x37b9F494ee29C9907684415681247FE3ec150ff0 | 保险池合约
 合约 | 地址 | 描述
 ---|---|---
 NestContract | 0xae6E04ED92FC12238852cA212f09b96Dc23407C1 | NEST Token合约
-USDTContract | 0xEDfe846E914d0aaaA42aC031D2D5Fc5467E68a81 | USDT Token 合约
+USDTContract | 0xEDfe846E914d0aaaA42aC031D2D5Fc5467E68a81 | USDT Token合约
 PTokenFactory | 0x94914baE774EcAc54a29078F010ef7c588573f4d | P资产工厂合约
 MortgagePool | 0xBFDFD8b3a95A4863ae00772d81A9d5Ff1894AF5E | 抵押池合约
 InsurancePool | 0x610a0e22286C6408A2384D7Ff14a10B85C6d8E50 | 保险池合约
@@ -250,6 +250,8 @@ PETH | 0x64B100bDA18c2A5AF4A370547adaB2712Dcf41dD | PETH合约
 
 ### Rinkeby
 
+V1.0
+
 合约 | 地址 | 描述
 ---|---|---
 NestContract | 0x5f24106d9768E2D124e16aF8713907c9F7Cf73F4 | NEST Token合约
@@ -261,6 +263,13 @@ PriceController | 0x272627AF55856c3aC9d4015146a57411Cdcf5f61 | 价格调用合�
 NestQuery | 0x50C3c947Fc7A1ce4F51c514501B98D23232e416C | NEST 价格合约
 PUSDT | 0x4db49cef7494960D65d838d4b4ea19b87919D225 | PUSDT合约
 PETH | 0x57eE2A4Ee1454A9825c5664085bf402E5f574c80 | PETH合约
+
+V1.1
+
+合约 | 地址 | 描述
+---|---|---
+MortgagePool | 0x012Cbf8dD0565081418718C35704212F58B3623b | 抵押池合约
+InsurancePool | 0xB5d13aa3eaA5DC1B7c6163A57dcc3da9f2c92bc3 | 保险池合约
 
 ### .private.json
 

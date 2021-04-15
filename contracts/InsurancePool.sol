@@ -212,6 +212,18 @@ contract InsurancePool is ReentrancyGuard {
         feeRate = num;
     }
 
+    // 设置赎回周期
+    function setRedemptionCycle(uint256 num) public onlyGovernance {
+        require(num > 0, "Log:InsurancePool:!zero");
+        redemptionCycle = num;
+    }
+
+    // 设置等待时间
+    function setWaitCycle(uint256 num) public onlyGovernance {
+        require(num > 0, "Log:InsurancePool:!zero");
+        waitCycle = num;
+    }
+
     //---------transaction---------
 
     // 设置管理员
