@@ -32,8 +32,8 @@ contract MortgagePool is ReentrancyGuard {
     mapping(address=>mapping(address=>address[])) ledgerArray;
     // 抵押资产=>最高抵押率
     mapping(address=>uint256) maxRate;
-    // 抵押资产=>清算线
-    mapping(address=>uint256) line;
+    // 抵押资产=>k
+    mapping(address=>uint256) k;
     // 价格合约
     IPriceController quary;
     // 保险池合约
@@ -90,11 +90,13 @@ contract MortgagePool is ReentrancyGuard {
     // rate:抵押率
     function getFee(uint256 parassetAssets, 
     	            uint256 blockHeight,
-    	            uint256 rate) public view returns(uint256) {
+    	            uint256 rate,
+                    uint256 nowRate) public view returns(uint256) {
         uint256 topOne = parassetAssets.mul(r0).mul(block.number.sub(blockHeight));
-        uint256 topTwo = parassetAssets.mul(r0).mul(block.number.sub(blockHeight)).mul(uint256(3).mul(rate));
+        uint256 ratePlus = rate.add(nowRate);
+        uint256 topTwo = parassetAssets.mul(r0).mul(block.number.sub(blockHeight)).mul(uint256(3).mul(ratePlus));
     	uint256 bottom = oneYear.mul(1 ether);
-    	return topOne.div(bottom).add(topTwo.div(bottom.mul(1 ether)));
+    	return topOne.div(bottom).add(topTwo.div(bottom.mul(1 ether).mul(2)));
     }
 
     // 计算抵押率
@@ -133,13 +135,10 @@ contract MortgagePool is ReentrancyGuard {
         if (pLedger.mortgageAssets == 0 && pLedger.parassetAssets == 0) {
             return (0,0,0,0);
         }
-        fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate);
-        uint256 tokenPriceAmount = tokenPrice;
         uint256 pTokenPrice = getDecimalConversion(pTokenToUnderlying[pToken], uTokenPrice, pToken);
-        mortgageRate = getMortgageRate(pLedger.mortgageAssets, 
-                                               pLedger.parassetAssets.add(fee), 
-                                               tokenPriceAmount,
-                                               pTokenPrice);
+        uint256 tokenPriceAmount = tokenPrice;
+        fee = getFee(pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate, getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPriceAmount, pTokenPrice));
+        mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets.add(fee), tokenPriceAmount, pTokenPrice);
         uint256 maxRateEther = maxRateNum.mul(0.01 ether);
         if (mortgageRate >= maxRateEther) {
             maxSubM = 0;
@@ -176,9 +175,10 @@ contract MortgagePool is ReentrancyGuard {
     		                                              uint256 parassetAssets, 
     		                                              uint256 blockHeight,
                                                           uint256 rate,
-                                                          bool created) {
+                                                          bool created,
+                                                          uint256 kLine) {
     	PersonalLedger memory pLedger = ledger[pToken][mortgageToken][address(owner)];
-    	return (pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate, pLedger.created);
+    	return (pLedger.mortgageAssets, pLedger.parassetAssets, pLedger.blockHeight, pLedger.rate, pLedger.created, getKLine(pLedger.rate, mortgageToken));
     }
 
     // 查看管理员地址
@@ -206,9 +206,9 @@ contract MortgagePool is ReentrancyGuard {
     	return maxRate[mortgageToken];
     }
 
-    // 查看清算线
-    function getLine(address mortgageToken) external view returns(uint256) {
-        return line[mortgageToken];
+    // 查看k
+    function getK(address mortgageToken) external view returns(uint256) {
+        return k[mortgageToken];
     }
 
     // 查看价格合约地址
@@ -237,6 +237,11 @@ contract MortgagePool is ReentrancyGuard {
                               address mortgageToken, 
                               uint256 index) external view returns(address) {
         return ledgerArray[pToken][mortgageToken][index];
+    }
+
+    // 查看清算线
+    function getKLine(uint256 rate, address mortgageToken) public view returns(uint256) {
+        return rate.mul(k[mortgageToken]).div(1000);
     }
 
     //---------governance----------
@@ -272,9 +277,9 @@ contract MortgagePool is ReentrancyGuard {
     }
 
     // 设置清算线
-    function setLine(address mortgageToken, 
-                     uint256 num) public onlyGovernance {
-        line[mortgageToken] = num.mul(0.01 ether);
+    function setK(address mortgageToken, 
+                  uint256 num) public onlyGovernance {
+        k[mortgageToken] = num;
     }
 
     // 设置最高抵押率
@@ -319,7 +324,7 @@ contract MortgagePool is ReentrancyGuard {
                   uint256 amount, 
                   uint256 rate) public payable whenActive nonReentrant {
     	require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
-        require(rate > 0, "Log:MortgagePool:rate!=0");
+        require(rate > 0 && rate <= maxRate[mortgageToken], "Log:MortgagePool:rate!=0");
         require(amount > 0, "Log:MortgagePool:amount!=0");
     	PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
     	// 获取价格
@@ -335,9 +340,12 @@ contract MortgagePool is ReentrancyGuard {
         }
         uint256 blockHeight = pLedger.blockHeight;
         uint256 parassetAssets = pLedger.parassetAssets;
+        // 判断当前抵押率不能超过清算线
+        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
+        require(mortgageRate <= getKLine(pLedger.rate, mortgageToken), "Log:MortgagePool:!line");
     	if (parassetAssets > 0 && block.number > blockHeight && blockHeight != 0) {
             // 结算稳定费
-            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate);
+            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate, mortgageRate);
             // 转入p资产
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
@@ -350,9 +358,7 @@ contract MortgagePool is ReentrancyGuard {
         pLedger.mortgageAssets = pLedger.mortgageAssets.add(amount);
         pLedger.parassetAssets = parassetAssets.add(pTokenAmount);
         pLedger.blockHeight = block.number;
-        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
-        require(mortgageRate <= maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
-        pLedger.rate = mortgageRate;
+        pLedger.rate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
         if (pLedger.created == false) {
             ledgerArray[pToken][mortgageToken].push(address(msg.sender));
             pLedger.created = true;
@@ -384,9 +390,12 @@ contract MortgagePool is ReentrancyGuard {
         }
         uint256 blockHeight = pLedger.blockHeight;
         uint256 parassetAssets = pLedger.parassetAssets;
+        // 判断当前抵押率不能超过清算线
+        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
+        require(mortgageRate <= getKLine(pLedger.rate, mortgageToken), "Log:MortgagePool:!line");
     	if (parassetAssets > 0 && block.number > blockHeight && blockHeight != 0) {
             // 结算稳定费
-            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate);
+            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate, mortgageRate);
             // 转入p资产
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
@@ -395,8 +404,7 @@ contract MortgagePool is ReentrancyGuard {
     	}
     	pLedger.mortgageAssets = pLedger.mortgageAssets.add(amount);
     	pLedger.blockHeight = block.number;
-        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
-        pLedger.rate = mortgageRate;
+        pLedger.rate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
     }
 
     // 提取资产
@@ -415,9 +423,12 @@ contract MortgagePool is ReentrancyGuard {
         (uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, pTokenToUnderlying[pToken], msg.value);
         uint256 blockHeight = pLedger.blockHeight;
         uint256 parassetAssets = pLedger.parassetAssets;
+        // 判断当前抵押率不能超过清算线
+        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
+        require(mortgageRate <= getKLine(pLedger.rate, mortgageToken), "Log:MortgagePool:!line");
     	if (parassetAssets > 0 && block.number > blockHeight && blockHeight != 0) {
             // 结算稳定费
-            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate);
+            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate, mortgageRate);
             // 转入p资产
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
@@ -426,9 +437,8 @@ contract MortgagePool is ReentrancyGuard {
     	}
     	pLedger.mortgageAssets = pLedger.mortgageAssets.sub(amount);
     	pLedger.blockHeight = block.number;
-    	uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
-        pLedger.rate = mortgageRate;
-    	require(mortgageRate <= maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
+        pLedger.rate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
+    	require(pLedger.rate <= maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
     	// 转出抵押token
     	if (mortgageToken != address(0x0)) {
     		ERC20(mortgageToken).safeTransfer(address(msg.sender), amount);
@@ -453,9 +463,12 @@ contract MortgagePool is ReentrancyGuard {
         (uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, pTokenToUnderlying[pToken], msg.value);
         uint256 blockHeight = pLedger.blockHeight;
         uint256 parassetAssets = pLedger.parassetAssets;
+        // 判断当前抵押率不能超过清算线
+        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
+        require(mortgageRate <= getKLine(pLedger.rate, mortgageToken), "Log:MortgagePool:!line");
         if (parassetAssets > 0 && block.number > blockHeight && blockHeight != 0) {
             // 结算稳定费
-            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate);
+            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate, mortgageRate);
             // 转入p资产
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), fee);
             // 消除负账户
@@ -464,9 +477,8 @@ contract MortgagePool is ReentrancyGuard {
         }
         pLedger.parassetAssets = parassetAssets.add(amount);
         pLedger.blockHeight = block.number;
-        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
-        pLedger.rate = mortgageRate;
-        require(mortgageRate <= maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
+        pLedger.rate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
+        require(pLedger.rate <= maxRate[mortgageToken], "Log:MortgagePool:!maxRate");
         PToken(pToken).issuance(amount, address(msg.sender));
     }
 
@@ -479,17 +491,20 @@ contract MortgagePool is ReentrancyGuard {
                             address pToken,
                             uint256 amount) public payable whenActive nonReentrant {
         require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
-        require(amount > 0, "Log:MortgagePool:!amount");
         PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+        uint256 parassetAssets = pLedger.parassetAssets;
+        require(amount > 0 && amount <= parassetAssets, "Log:MortgagePool:!amount");
         require(pLedger.created, "Log:MortgagePool:!created");
         address uToken = pTokenToUnderlying[pToken];
         // 获取价格
         (uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, uToken, msg.value);
         uint256 blockHeight = pLedger.blockHeight;
-        uint256 parassetAssets = pLedger.parassetAssets;
+        // 判断当前抵押率不能超过清算线
+        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
+        require(mortgageRate <= getKLine(pLedger.rate, mortgageToken), "Log:MortgagePool:!line");
         if (parassetAssets > 0 && block.number > blockHeight && blockHeight != 0) {
             // 结算稳定费
-            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate);
+            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate, mortgageRate);
             // 转入p资产
             ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), amount.add(fee));
             // 消除负账户
@@ -498,48 +513,47 @@ contract MortgagePool is ReentrancyGuard {
         }
         pLedger.parassetAssets = parassetAssets.sub(amount);
         pLedger.blockHeight = block.number;
-        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
-        pLedger.rate = mortgageRate;
+        pLedger.rate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
         // 销毁p资产
         insurancePool.destroyPToken(pToken, amount, uToken);
     }
 
-    // 赎回全部抵押
-    // mortgageToken:抵押资产地址
-    // pToken:p资产地址
-    // 注意：mortgageToken为0X0时，抵押资产为ETH。
-    function redemptionAll(address mortgageToken, 
-                           address pToken) public onleRedemptionAll nonReentrant {
-        require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
-        PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
-        require(pLedger.created, "Log:MortgagePool:!created");
-        address uToken = pTokenToUnderlying[pToken];
-        uint256 blockHeight = pLedger.blockHeight;
-        uint256 parassetAssets = pLedger.parassetAssets;
-        if (parassetAssets > 0 && block.number > blockHeight && blockHeight != 0) {
-            // 结算稳定费
-            uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate);
-            // 转入p资产
-            ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), parassetAssets.add(fee));
-            // 消除负账户
-            insurancePool.eliminate(pToken, uToken);
-            emit FeeValue(pToken, fee);
-        }
-        // 销毁p资产
-        insurancePool.destroyPToken(pToken, parassetAssets, uToken);
-        // 更新信息
-        uint256 mortgageAssetsAmount = pLedger.mortgageAssets;
-        pLedger.mortgageAssets = 0;
-        pLedger.parassetAssets = 0;
-        pLedger.blockHeight = 0;
-        pLedger.rate = 0;
-        // 转出抵押资产
-        if (mortgageToken != address(0x0)) {
-            ERC20(mortgageToken).safeTransfer(address(msg.sender), mortgageAssetsAmount);
-        } else {
-            TransferHelper.safeTransferETH(address(msg.sender), mortgageAssetsAmount);
-        }
-    }
+    // // 赎回全部抵押
+    // // mortgageToken:抵押资产地址
+    // // pToken:p资产地址
+    // // 注意：mortgageToken为0X0时，抵押资产为ETH。
+    // function redemptionAll(address mortgageToken, 
+    //                        address pToken) public onleRedemptionAll nonReentrant {
+    //     require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
+    //     PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
+    //     require(pLedger.created, "Log:MortgagePool:!created");
+    //     address uToken = pTokenToUnderlying[pToken];
+    //     uint256 blockHeight = pLedger.blockHeight;
+    //     uint256 parassetAssets = pLedger.parassetAssets;
+    //     if (parassetAssets > 0 && block.number > blockHeight && blockHeight != 0) {
+    //         // 结算稳定费
+    //         uint256 fee = getFee(parassetAssets, blockHeight, pLedger.rate);
+    //         // 转入p资产
+    //         ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), parassetAssets.add(fee));
+    //         // 消除负账户
+    //         insurancePool.eliminate(pToken, uToken);
+    //         emit FeeValue(pToken, fee);
+    //     }
+    //     // 销毁p资产
+    //     insurancePool.destroyPToken(pToken, parassetAssets, uToken);
+    //     // 更新信息
+    //     uint256 mortgageAssetsAmount = pLedger.mortgageAssets;
+    //     pLedger.mortgageAssets = 0;
+    //     pLedger.parassetAssets = 0;
+    //     pLedger.blockHeight = 0;
+    //     pLedger.rate = 0;
+    //     // 转出抵押资产
+    //     if (mortgageToken != address(0x0)) {
+    //         ERC20(mortgageToken).safeTransfer(address(msg.sender), mortgageAssetsAmount);
+    //     } else {
+    //         TransferHelper.safeTransferETH(address(msg.sender), mortgageAssetsAmount);
+    //     }
+    // }
 
     // 清算
     // mortgageToken:抵押资产地址
@@ -557,16 +571,13 @@ contract MortgagePool is ReentrancyGuard {
     	// 调用预言机，计算p资产数量
         address uToken = pTokenToUnderlying[pToken];
     	(uint256 tokenPrice, uint256 pTokenPrice) = getPriceForPToken(mortgageToken, uToken, msg.value);
-    	uint256 pTokenAmount = amount.mul(pTokenPrice).mul(90).div(tokenPrice.mul(100));
     	// 计算稳定费
-    	uint256 fee = 0;
         uint256 parassetAssets = pLedger.parassetAssets;
         uint256 mortgageAssets = pLedger.mortgageAssets;
+        uint256 pTokenAmount = amount.mul(pTokenPrice).mul(90).div(tokenPrice.mul(100));
         require(amount > 0 && amount <= mortgageAssets, "Log:MortgagePool:!amount");
-    	if (parassetAssets > 0 && block.number > pLedger.blockHeight && pLedger.blockHeight != 0) {
-            fee = getFee(parassetAssets, pLedger.blockHeight, pLedger.rate);
-    	}
-    	require(getMortgageRate(mortgageAssets, parassetAssets.add(fee), tokenPrice, pTokenPrice) > line[mortgageToken], "Log:MortgagePool:!line");
+        // 判断清算线
+        checkLine(pLedger, tokenPrice, pTokenPrice, mortgageToken);
     	// 转入P资产
     	ERC20(pToken).safeTransferFrom(address(msg.sender), address(insurancePool), pTokenAmount);
     	// 消除负账户
@@ -578,14 +589,29 @@ contract MortgagePool is ReentrancyGuard {
     	// 更新信息
     	pLedger.mortgageAssets = mortgageAssets.sub(amount);
         pLedger.parassetAssets = parassetAssets.sub(offset);
-        pLedger.blockHeight = block.number;
-        pLedger.rate = getMortgageRate(pLedger.mortgageAssets, pLedger.parassetAssets, tokenPrice, pTokenPrice);
+        if (pLedger.parassetAssets == 0) {
+            pLedger.blockHeight = 0;
+            pLedger.rate = 0;
+        }
     	// 转移抵押资产
     	if (mortgageToken != address(0x0)) {
     		ERC20(mortgageToken).safeTransfer(address(msg.sender), amount);
     	} else {
             TransferHelper.safeTransferETH(address(msg.sender), amount);
     	}
+    }
+
+    function checkLine(PersonalLedger memory pLedger, uint256 tokenPrice, uint256 pTokenPrice, address mortgageToken) private view {
+        uint256 parassetAssets = pLedger.parassetAssets;
+        uint256 mortgageAssets = pLedger.mortgageAssets;
+        // 判断当前抵押率不能超过清算线
+        uint256 mortgageRate = getMortgageRate(pLedger.mortgageAssets, parassetAssets, tokenPrice, pTokenPrice);
+        uint256 fee = 0;
+        if (parassetAssets > 0 && block.number > pLedger.blockHeight && pLedger.blockHeight != 0) {
+            fee = getFee(parassetAssets, pLedger.blockHeight, pLedger.rate, mortgageRate);
+        }
+        uint256 kLineNum = getKLine(pLedger.rate, mortgageToken);
+        require(getMortgageRate(mortgageAssets, parassetAssets.add(fee), tokenPrice, pTokenPrice) > kLineNum, "Log:MortgagePool:!line");
     }
 
     // 获取价格
@@ -598,6 +624,6 @@ contract MortgagePool is ReentrancyGuard {
                                address uToken,
                                uint256 priceValue) private returns (uint256 tokenPrice, 
                                                                     uint256 pTokenPrice) {
-        (tokenPrice, pTokenPrice) = quary.getPriceForPToken{value:priceValue}(token, uToken, underlyingToPToken[uToken], msg.sender);   
+        (tokenPrice, pTokenPrice) = quary.getPriceForPToken{value:priceValue}(token, uToken, msg.sender);   
     }
 }

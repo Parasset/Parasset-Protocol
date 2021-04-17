@@ -2,5 +2,5 @@
 pragma solidity ^0.6.12;
 
 interface IPriceController {
-    function getPriceForPToken(address token, address uToken, address pToken, address payback) external payable returns (uint256 tokenPrice, uint256 pTokenPrice);
+    function getPriceForPToken(address token, address uToken, address payback) external payable returns (uint256 tokenPrice, uint256 pTokenPrice);
 }

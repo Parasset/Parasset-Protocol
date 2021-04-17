@@ -42,18 +42,27 @@ exports.deployNestQuery= async function () {
     console.log(`>>> [DPLY]: NestQuery deployed, address=${NestQuery.address}, block=${tx.blockNumber}`);
     return NestQuery;
 }
-exports.deployPriceController= async function (add) {
+// 部署NTokenController
+exports.deployNTokenController= async function () {
+    const NTokenController = await ethers.getContractFactory("NTokenController");
+    const controller = await NTokenController.deploy();
+    const tx = controller.deployTransaction;
+    await tx.wait(1);
+    console.log(`>>> [DPLY]: deployNTokenController deployed, address=${controller.address}, block=${tx.blockNumber}`);
+    return controller;
+}
+exports.deployPriceController= async function (priceContract, ntokenController) {
     const PriceControllerContract = await ethers.getContractFactory("PriceController");
-    const PriceController = await PriceControllerContract.deploy(add);
+    const PriceController = await PriceControllerContract.deploy(priceContract,ntokenController);
     const tx = PriceController.deployTransaction;
     await tx.wait(1);
     console.log(`>>> [DPLY]: PriceController deployed, address=${PriceController.address}, block=${tx.blockNumber}`);
     return PriceController;
 }
 // 修改价格
-exports.setPrice = async function (quaryAddress, token, avg) {
+exports.setAvg = async function (quaryAddress, token, avg) {
 	const NestQueryContract = await ethers.getContractAt("NestQuery", quaryAddress);
-	const set = await NestQueryContract.setPrice(token, avg);
+	const set = await NestQueryContract.setAvg(token, avg);
 	await set.wait(1);
 	console.log(`>>> [SETPRICE]: ${token} => ${avg}`);
 }
@@ -169,10 +178,10 @@ exports.setMaxRate = async function (mortgagePool, MToken, rate) {
     console.log(`>>> [setMaxRate SUCCESS]`);
 }
 
-// 设置平仓线
-exports.setLine = async function (mortgagePool, MToken, num) {
+// 设置k值
+exports.setK = async function (mortgagePool, MToken, num) {
     const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-    const line = await pool.setLine(MToken, num);
+    const line = await pool.setK(MToken, num);
     await line.wait(1);
     console.log(`>>> [setLine SUCCESS]`);
 }
@@ -182,7 +191,18 @@ exports.setPTokenOperator = async function(factory, add, allow) {
 	const fac = await ethers.getContractAt("PTokenFactory", factory);
     const Operator = await fac.setPTokenOperator(add, allow);
     await Operator.wait(1);
-    console.log(`>>> [SET SUCCESS]`);
+    console.log(`>>> [SetPTokenOperator SUCCESS]`);
+}
+
+// 设置token-ntoken
+exports.setNTokenMapping = async function(controller, priceContract, token, nToken) {
+    const NTokenController = await ethers.getContractAt("NTokenController", controller);
+    const tx1 = await NTokenController.setNTokenMapping(token, nToken);
+    await tx1.wait(1);
+    const price = await ethers.getContractAt("NestQuery", priceContract);
+    const tx2 = await price.setNTokenMapping(token, nToken);
+    await tx2.wait(1);
+    console.log(`>>> [SetNTokenMapping SUCCESS]`);
 }
 
 // 抵押铸币
@@ -267,8 +287,9 @@ exports.redemptionIns = async function(insurancePool, token, amount) {
 // 转账ERC20
 exports.transfer = async function(token, to, value) {
 	const ERC20Contract = await ethers.getContractAt("IERC20", token);
-    const approve = await ERC20Contract.transfer(to, value);
+    const transfer = await ERC20Contract.transfer(to, value);
     console.log(`>>> [transfer]: ${token} transfer ${value} to ${to}`);
+    console.log(`~~~区块号:${transfer.blockNumber}`);
 }
 
 // 查询LP总量
@@ -295,7 +316,8 @@ exports.getLedger = async function (mortgagePool, PToken, MToken, owner) {
     console.log(`>>>> 最近操作区块号:${ledger[2].toString()}`);
     console.log(`>>>> 抵押率:${ledger[3].toString()}`);
     console.log(`>>>> 是否创建:${ledger[4].toString()}`);
-    return [ledger[0], ledger[1], ledger[2], ledger[3], ledger[4]];
+    console.log(`>>>> 清算线:${ledger[5].toString()}`);
+    return [ledger[0], ledger[1], ledger[2], ledger[3], ledger[4], ledger[5]];
 }
 
 // 查看实时数据

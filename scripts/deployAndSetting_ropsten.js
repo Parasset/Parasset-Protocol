@@ -2,9 +2,9 @@ const hre = require("hardhat");
 const { ethers } = require("hardhat");
 
 // 部署
-const {deployUSDT,deployNEST,deployNestQuery,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
+const {deployUSDT,deployNEST,deployNestQuery,deployNTokenController,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
 // 设置
-const {setInsurancePool,setMortgagePool,setPrice,setMaxRate,setLine,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow} = require("./normal-scripts.js")
+const {setInsurancePool,setMortgagePool,setAvg,setMaxRate,setK,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow,setNTokenMapping} = require("./normal-scripts.js")
 // 交互
 const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoinage,reducedCoinage,exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns} = require("./normal-scripts.js")
 // 查询
@@ -25,8 +25,10 @@ async function main() {
 	pool = await deployMortgagePool(factory.address);
 	// 部署Nest价格合约
 	NestQuery = await deployNestQuery();
+	// 部署NTokenController
+	NTokenController = await deployNTokenController();
 	// 部署获取价格合约
-	PriceController = await deployPriceController(NestQuery.address);
+	PriceController = await deployPriceController(NestQuery.address, NTokenController.address);
 	// 部署保险池合约
 	insurancePool = await deployInsurancePool(factory.address);
 	// 设置保险池合约
@@ -57,17 +59,22 @@ async function main() {
 	// 设置抵押率-ETH
 	await setMaxRate(pool.address, ETHAddress, "70");
 	// 设置抵押率-NEST
-	await setMaxRate(pool.address, NESTContract.address, "70");
-	// 设置平仓线-ETH
-	await setLine(pool.address, ETHAddress, "80");
-	// 设置平仓线-NEST
-	await setLine(pool.address, NESTContract.address, "80");
+	await setMaxRate(pool.address, NESTContract.address, "40");
+	// 设置k-ETH
+	await setK(pool.address, ETHAddress, "1250");
+	// 设置k-NEST
+	await setK(pool.address, NESTContract.address, "1333");
 	// 设置价格，USDT/ETH
-	await setPrice(NestQuery.address,USDTContract.address, USDT("2"));
+	await setAvg(NestQuery.address,USDTContract.address, USDT("2"));
 	// 设置价格，NEST/ETH
-	await setPrice(NestQuery.address,NESTContract.address, ETH("3"));
+	await setAvg(NestQuery.address,NESTContract.address, ETH("3"));
 	// 设置价格合约
 	await setPriceController(pool.address,PriceController.address);
+	// 设置标的资产与p资产映射
+	await setInfo(pool.address, USDTContract.address, USDTPToken);
+	await setInfo(pool.address, ETHAddress, ETHPToken);
+	await setNTokenMapping(NTokenController.address, NestQuery.address, USDTContract.address, NESTContract.address);
+
 	console.log("network:ropsten");
 	console.log(`NestContract:${NESTContract.address}`);
 	console.log(`USDTContract:${USDTContract.address}`);
@@ -75,6 +82,7 @@ async function main() {
 	console.log(`MortgagePool:${pool.address}`);
 	console.log(`InsurancePool:${insurancePool.address}`);
 	console.log(`PriceController:${PriceController.address}`);
+	console.log(`NTokenController:${NTokenController.address}`);
 	console.log(`NestQuery:${NestQuery.address}`);
 	console.log(`PUSDT:${USDTPToken}`);
 	console.log(`PETH:${ETHPToken}`);

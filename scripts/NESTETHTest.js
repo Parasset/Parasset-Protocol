@@ -1,9 +1,9 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
 // 部署
-const {deployUSDT,deployNEST,deployNestQuery,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
+const {deployUSDT,deployNEST,deployNestQuery,deployNTokenController,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
 // 设置
-const {setInsurancePool,setMortgagePool,setPrice,setMaxRate,setLine,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow} = require("./normal-scripts.js")
+const {setInsurancePool,setMortgagePool,setAvg,setMaxRate,setK,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow} = require("./normal-scripts.js")
 // 交互
 const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoinage,reducedCoinage,exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns} = require("./normal-scripts.js")
 // 查询
@@ -21,10 +21,13 @@ async function main() {
 	pool = await deployMortgagePool(factory.address);
 	// 部署价格合约
 	NestQuery = await deployNestQuery();
+	// 部署NTokenController
+	NTokenController = await deployNTokenController();
 	// 部署获取价格合约
-	PriceController = await deployPriceController(NestQuery.address);
+	PriceController = await deployPriceController(NestQuery.address, NTokenController.address);
 	// 部署保险池合约
 	insurancePool = await deployInsurancePool(factory.address);
+	
 	// 向抵押池合约授权USDT
 	await approve(NESTContract.address, pool.address, ETH("999999"));
 	// 抵押池合约中设置保险池合约地址
@@ -48,11 +51,11 @@ async function main() {
 	// 设置NEST最高抵押率
 	await setMaxRate(pool.address, NESTContract.address, "70");
 	// 设置ETH平仓线
-	await setLine(pool.address, NESTContract.address, "80");
+	await setK(pool.address, NESTContract.address, "1333");
 	// 向抵押池合约授权PETH
 	await approve(ETHPToken, pool.address, ETH("999999"));
 	// 设置NEST价格
-	await setPrice(NestQuery.address,NESTContract.address, ETH("3"));
+	await setAvg(NestQuery.address,NESTContract.address, ETH("3"));
 	// 在抵押池合约中设置价格合约地址
 	await setPriceController(pool.address,PriceController.address);
 

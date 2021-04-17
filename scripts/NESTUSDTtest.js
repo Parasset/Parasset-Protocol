@@ -1,9 +1,9 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
 // 部署
-const {deployUSDT,deployNEST,deployNestQuery,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
+const {deployUSDT,deployNEST,deployNestQuery,deployNTokenController,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
 // 设置
-const {setInsurancePool,setMortgagePool,setPrice,setMaxRate,setLine,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow} = require("./normal-scripts.js")
+const {setInsurancePool,setMortgagePool,setAvg,setMaxRate,setK,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow,setNTokenMapping} = require("./normal-scripts.js")
 // 交互
 const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoinage,reducedCoinage,exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns} = require("./normal-scripts.js")
 // 查询
@@ -16,8 +16,10 @@ async function main() {
 	NESTContract = await deployNEST();
 	factory = await depolyFactory();
 	NestQuery = await deployNestQuery();
+	// 部署NTokenController
+	NTokenController = await deployNTokenController();
 	// 部署获取价格合约
-	PriceController = await deployPriceController(NestQuery.address);
+	PriceController = await deployPriceController(NestQuery.address, NTokenController.address);
 	pool = await deployMortgagePool(factory.address);
 	insurancePool = await deployInsurancePool(factory.address);
 	await approve(USDTContract.address, pool.address, USDT("999999"));
@@ -33,29 +35,30 @@ async function main() {
 	await setInfo(pool.address, USDTContract.address, USDTPToken);
 	await allow(pool.address, USDTPToken, NESTContract.address);
 	await setMaxRate(pool.address, NESTContract.address, "70");
-	await setLine(pool.address, NESTContract.address, "80");
-	await setPrice(NestQuery.address,NESTContract.address, ETH("2"));
-	await setPrice(NestQuery.address,USDTContract.address, USDT("4"));
+	await setK(pool.address, NESTContract.address, "1333");
+	await setAvg(NestQuery.address,NESTContract.address, ETH("2"));
+	await setAvg(NestQuery.address,USDTContract.address, USDT("4"));
 	await setPriceController(pool.address,PriceController.address);
 	await approve(USDTPToken, pool.address, ETH("999999"));
+	await setNTokenMapping(NTokenController.address, NestQuery.address, USDTContract.address, NESTContract.address);
 
 
 	// 铸币
-	await coin(pool.address, NESTContract.address, USDTPToken, ETH("4"), "50", "20000000000000000");
+	await coin(pool.address, NESTContract.address, USDTPToken, ETH("4"), "50", "10000000000000000");
 	const ledger = await getLedger(pool.address, USDTPToken, NESTContract.address, accounts[0].address);
 	// 增加抵押
-	await supplement(pool.address, NESTContract.address, USDTPToken, ETH("2"), "20000000000000000");
+	await supplement(pool.address, NESTContract.address, USDTPToken, ETH("2"), "10000000000000000");
 	await getLedger(pool.address, USDTPToken, NESTContract.address, accounts[0].address);
 	await ERC20Balance(USDTPToken, insurancePool.address);
 	// 减少抵押
-	await decrease(pool.address, NESTContract.address, USDTPToken, ETH("1"), "20000000000000000");
+	await decrease(pool.address, NESTContract.address, USDTPToken, ETH("1"), "10000000000000000");
 	await getLedger(pool.address, USDTPToken, NESTContract.address, accounts[0].address);
 	await ERC20Balance(USDTPToken, insurancePool.address);
 	// 新增铸币
-	await increaseCoinage(pool.address, NESTContract.address, USDTPToken, ETH("1"), "20000000000000000");
+	await increaseCoinage(pool.address, NESTContract.address, USDTPToken, ETH("1"), "10000000000000000");
 	await getLedger(pool.address, USDTPToken, NESTContract.address, accounts[0].address);
 	// 减少铸币
-	await reducedCoinage(pool.address, NESTContract.address, USDTPToken, ETH("1"), "20000000000000000");
+	await reducedCoinage(pool.address, NESTContract.address, USDTPToken, ETH("1"), "10000000000000000");
 	await getLedger(pool.address, USDTPToken, NESTContract.address, accounts[0].address);
 	// 赎回
 	// await redemptionAll(pool.address, NESTContract.address, USDTPToken);

@@ -47,11 +47,11 @@ async function main() {
 	// 设置抵押率-ETH
 	await setMaxRate(pool.address, ETHAddress, "70");
 	// 设置抵押率-NEST
-	await setMaxRate(pool.address, NESTContract.address, "70");
+	await setMaxRate(pool.address, NESTContract.address, "40");
 	// 设置平仓线-ETH
-	await setLine(pool.address, ETHAddress, "80");
+	await setLine(pool.address, ETHAddress, "84");
 	// 设置平仓线-NEST
-	await setLine(pool.address, NESTContract.address, "80");
+	await setLine(pool.address, NESTContract.address, "50");
 	// 设置价格合约
 	await setPriceController(pool.address,PriceController.address);
 	// 设置标的资产与p资产映射
