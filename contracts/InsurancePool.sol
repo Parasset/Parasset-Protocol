@@ -4,7 +4,6 @@ pragma solidity ^0.6.12;
 import "./lib/SafeMath.sol";
 import './lib/TransferHelper.sol';
 import './lib/SafeERC20.sol';
-import "./lib/AddressPayable.sol";
 import "./iface/IERC20.sol";
 import "./iface/IMortgagePool.sol";
 import "./PToken.sol";
@@ -13,7 +12,6 @@ import "./lib/ReentrancyGuard.sol";
 
 contract InsurancePool is ReentrancyGuard {
 	using SafeMath for uint256;
-	using address_make_payable for address;
 	using SafeERC20 for ERC20;
 
 	// 管理员地址
