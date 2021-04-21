@@ -14,41 +14,43 @@ contract InsurancePool is ReentrancyGuard {
 	using SafeMath for uint256;
 	using SafeERC20 for ERC20;
 
-	// 管理员地址
+	// Governance address
 	address public governance;
-	// 标的资产地址=>负账户资金数量
+	// Underlying asset address => negative account funds
 	mapping(address=>uint256) insNegative;
-	// LP总量,标的资产=>LP总量
+	// Underlying asset address => total LP
 	mapping(address=>uint256) totalSupply;
-	// 最新赎回节点, 标的资产地址=>最新赎回时间
+	// Underlying asset address => latest redemption time
     mapping(address=>uint256) latestTime;
-	// 赎回周期
+	// Redemption cycle, 14 days
 	uint256 public redemptionCycle = 15 minutes;
-	// 等待周期
+	// Redemption duration, 2 days
 	uint256 public waitCycle = 30 minutes;
-    // 个人LP,个人地址=>标的资产地址=>LP数量
+    // User address => Underlying asset address => LP quantity
     mapping(address=>mapping(address=>uint256)) balances;
-	// 冻结保险份额,用户地址=>标的资产地址=>冻结份额数据
+	// User address => Underlying asset address => Freeze LP data
 	mapping(address=>mapping(address=>Frozen)) frozenIns;
 	struct Frozen {
-		uint256 amount;							//	冻结数量
-		uint256 time;							//  冻结时间
+		uint256 amount;							// Frozen quantity
+		uint256 time;							// Freezing time
 	}
-    // 保险池地址
+    // Mortgage pool address
     IMortgagePool mortgagePool;
-    // 工厂合约地址
+    // PTokenFactory address
     IPTokenFactory pTokenFactory;
-    // 状态
-    uint8 public flag;      // = 0: 停止
-                            // = 1: 启动
-                            // = 2: 仅赎回
-    // 手续费率
+    // Status
+    uint8 public flag;      // = 0: pause
+                            // = 1: active
+                            // = 2: redemption only
+    // Rate(2/1000)
     uint256 feeRate = 2;
 
     event Destroy(address token, uint256 amount, address account);
     event Issuance(address token, uint256 amount, address account);
     event Negative(address token, uint256 amount, uint256 allValue);
 
+    /// @dev Initialization method
+    /// @param factoryAddress PTokenFactory address
 	constructor (address factoryAddress) public {
         pTokenFactory = IPTokenFactory(factoryAddress);
         governance = pTokenFactory.getGovernance();
@@ -79,45 +81,60 @@ contract InsurancePool is ReentrancyGuard {
 
     //---------view---------
 
-    // 查询管理员地址
+    /// @dev View governance address
+    /// @return governance address
     function getGovernance() external view returns(address) {
         return governance;
     }
 
-    // 查询负账户
+    /// @dev View negative ledger
+    /// @param token underlying asset address
+    /// @return negative ledger
     function getInsNegative(address token) external view returns(uint256) {
         return insNegative[token];
     }
 
-    // 查询LP总量
+    /// @dev View total LP
+    /// @param token underlying asset address
+    /// @return total LP
     function getTotalSupply(address token) external view returns(uint256) {
         return totalSupply[token];
     }
 
-    // 查询个人LP
+    /// @dev View personal LP
+    /// @param token underlying asset address
+    /// @param add user address
+    /// @return personal LP
     function getBalances(address token, 
                          address add) external view returns(uint256) {
         return balances[add][token];
     }
 
-    // 查询手续费率
+    /// @dev View rate
+    /// @return rate
     function getFeeRate() external view returns(uint256) {
         return feeRate;
     }
 
-    // 查询保险池地址
+    /// @dev View mortgage pool address
+    /// @return mortgage pool address
     function getMortgagePool() external view returns(address) {
         return address(mortgagePool);
     }
 
-    // 查询最新赎回时间
+    /// @dev View the latest redemption time
+    /// @param token underlying asset address
+    /// @return the latest redemption time
     function getLatestTime(address token) external view returns(uint256) {
         return latestTime[token];
     }
 
-    // 查询赎回时间段-下期
+    /// @dev View redemption period, next time
+    /// @param token underlying asset address
+    /// @return startTime start time
+    /// @return endTime end time
     function getRedemptionTime(address token) external view returns(uint256 startTime, 
-                                                                  uint256 endTime) {
+                                                                    uint256 endTime) {
         uint256 time = latestTime[token];
         if (now > time) {
             uint256 subTime = now.sub(time).div(waitCycle);
@@ -128,9 +145,12 @@ contract InsurancePool is ReentrancyGuard {
         endTime = startTime.add(redemptionCycle);
     }
 
-    // 查询赎回时间段-前期
+    /// @dev View redemption period, this period
+    /// @param token underlying asset address
+    /// @return startTime start time
+    /// @return endTime end time
     function getRedemptionTimeFront(address token) external view returns(uint256 startTime, 
-                                                                       uint256 endTime) {
+                                                                         uint256 endTime) {
         uint256 time = latestTime[token];
         if (now > time) {
             uint256 subTime = now.sub(time).div(waitCycle);
@@ -141,14 +161,21 @@ contract InsurancePool is ReentrancyGuard {
         endTime = startTime.add(redemptionCycle);
     }
 
-    // 查询被冻结份额及解冻时间
+    /// @dev View frozen LP and unfreeze time
+    /// @param token underlying asset address
+    /// @param add user address
+    /// @return frozen LP
+    /// @return unfreeze time
     function getFrozenIns(address token, 
                           address add) external view returns(uint256, uint256) {
         Frozen memory frozenInfo = frozenIns[add][token];
         return (frozenInfo.amount, frozenInfo.time);
     }
 
-    // 查询被冻结份额实时（in time）
+    /// @dev View frozen LP and unfreeze time, real time
+    /// @param token underlying asset address
+    /// @param add user address
+    /// @return frozen LP
     function getFrozenInsInTime(address token, 
                                 address add) external view returns(uint256) {
         Frozen memory frozenInfo = frozenIns[add][token];
@@ -158,7 +185,10 @@ contract InsurancePool is ReentrancyGuard {
         return frozenInfo.amount;
     }
 
-    // 查询可赎回份额实时
+    /// @dev View redeemable LP, real time
+    /// @param token underlying asset address
+    /// @param add user address
+    /// @return redeemable LP
     function getRedemptionAmount(address token, 
                                  address add) external view returns (uint256) {
         Frozen memory frozenInfo = frozenIns[add][token];
@@ -170,10 +200,11 @@ contract InsurancePool is ReentrancyGuard {
         }
     }
 
-	// 小数转换
-    // inputToken:输入资产地址
-    // inputTokenAmount:输入资产数量
-    // outputToken:输出资产地址
+	/// @dev Uniform accuracy
+    /// @param inputToken Initial token
+    /// @param inputTokenAmount Amount of token
+    /// @param outputToken Converted token
+    /// @return stability Amount of outputToken
     function getDecimalConversion(address inputToken, 
     	                          uint256 inputTokenAmount, 
     	                          address outputToken) public view returns(uint256) {
@@ -190,33 +221,34 @@ contract InsurancePool is ReentrancyGuard {
 
     //---------governance----------
 
-    // 设置状态
+    /// @dev Set contract status
+    /// @param num 0: pause, 1: active, 2: redemption only
     function setFlag(uint8 num) public onlyGovernance {
         flag = num;
     }
 
-    // 设置抵押池地址
+    /// @dev Set mortgage pool address
     function setMortgagePool(address add) public onlyGovernance {
     	mortgagePool = IMortgagePool(add);
     }
 
-    // 设置最新赎回节点
+    /// @dev Set the latest redemption time
     function setLatestTime(address token) public onlyMortgagePool {
         latestTime[token] = now.add(waitCycle);
     }
 
-    // 设置手续费率
+    /// @dev Set the rate
     function setFeeRate(uint256 num) public onlyGovernance {
         feeRate = num;
     }
 
-    // 设置赎回周期
+    /// @dev Set redemption cycle
     function setRedemptionCycle(uint256 num) public onlyGovernance {
         require(num > 0, "Log:InsurancePool:!zero");
         redemptionCycle = num * 1 days;
     }
 
-    // 设置等待时间
+    /// @dev Set redemption duration
     function setWaitCycle(uint256 num) public onlyGovernance {
         require(num > 0, "Log:InsurancePool:!zero");
         waitCycle = num * 1 days;
@@ -224,51 +256,75 @@ contract InsurancePool is ReentrancyGuard {
 
     //---------transaction---------
 
-    // 设置管理员
+    /// @dev Set governance address
     function setGovernance() public {
         governance = pTokenFactory.getGovernance();
     }
 
-	// 兑换，p资产换标的资产
-    // pToken:pToken地址
-    // amount:pToken数量
+    /// @dev Exchange: ptoken exchanges the underlying asset
+    /// @param pToken ptoken address
+    /// @param amount amount of ptoken
     function exchangePTokenToUnderlying(address pToken, 
     	                                uint256 amount) public whenActive nonReentrant {
+        // amount > 0
         require(amount > 0, "Log:InsurancePool:!amount");
+
+        // Calculate the fee
     	uint256 fee = amount.mul(feeRate).div(1000);
+
+        // Transfer to the ptoken
     	ERC20(pToken).safeTransferFrom(address(msg.sender), address(this), amount);
+
+        // Verify ptoken
         address underlyingToken = mortgagePool.getPTokenToUnderlying(pToken);
         address pToken_s = mortgagePool.getUnderlyingToPToken(underlyingToken);
         require(pToken_s == pToken,"Log:InsurancePool:!pToken");
+
+        // Calculate the amount of transferred underlying asset
         uint256 uTokenAmount = getDecimalConversion(pToken, amount.sub(fee), underlyingToken);
         require(uTokenAmount > 0, "Log:InsurancePool:!uTokenAmount");
+
+        // Transfer out underlying asset
     	if (underlyingToken != address(0x0)) {
     		ERC20(underlyingToken).safeTransfer(address(msg.sender), uTokenAmount);
     	} else {
             TransferHelper.safeTransferETH(address(msg.sender), uTokenAmount);
     	}
-    	// 消除负账户
+
+    	// Eliminate negative ledger
         _eliminate(pToken, underlyingToken);
     }
 
-    // 兑换，标的资产换p资产
-    // token:标的资产地址
-    // amount:标的资产数量
+    /// @dev Exchange: underlying asset exchanges the ptoken
+    /// @param token underlying asset address
+    /// @param amount amount of underlying asset
     function exchangeUnderlyingToPToken(address token, 
     	                                uint256 amount) public payable whenActive nonReentrant {
+        // amount > 0
         require(amount > 0, "Log:InsurancePool:!amount");
+
+        // Calculate the fee
     	uint256 fee = amount.mul(feeRate).div(1000);
+
+        // Transfer to the underlying asset
     	if (token != address(0x0)) {
+            // The underlying asset is ERC20
     		require(msg.value == 0, "Log:InsurancePool:msg.value!=0");
     		ERC20(token).safeTransferFrom(address(msg.sender), address(this), amount);
     	} else {
+            // The underlying asset is ETH
     		require(msg.value == amount, "Log:InsurancePool:!msg.value");
     	}
+
+        // Calculate the amount of transferred ptokens
     	address pToken = mortgagePool.getUnderlyingToPToken(token);
         uint256 pTokenAmount = getDecimalConversion(token, amount.sub(fee), pToken);
         require(pTokenAmount > 0, "Log:InsurancePool:!pTokenAmount");
+
+        // Transfer out ptoken
         uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
         if (pTokenBalance < pTokenAmount) {
+            // Insufficient ptoken balance,
             uint256 subNum = pTokenAmount.sub(pTokenBalance);
             PToken(pToken).issuance(subNum, address(this));
             insNegative[token] = insNegative[token].add(subNum);
@@ -276,81 +332,119 @@ contract InsurancePool is ReentrancyGuard {
     	ERC20(pToken).safeTransfer(address(msg.sender), pTokenAmount);
     }
 
-    // 认购保险
-    // token:标的资产地址，USDT、ETH...
-    // amount:标的资产数量
+    /// @dev Subscribe for insurance
+    /// @param token underlying asset address
+    /// @param amount amount of underlying asset
     function subscribeIns(address token, 
     	                  uint256 amount) public payable whenActive nonReentrant {
+        // amount > 0
         require(amount > 0, "Log:InsurancePool:!amount");
-        uint256 tokenBalance;
+
+        // Verify ptoken
         address pToken = mortgagePool.getUnderlyingToPToken(token);
         require(pToken != address(0x0), "Log:InsurancePool:!pToken");
+
+        // Update redemption time
     	updateLatestTime(token);
+
+        // Thaw LP
     	Frozen storage frozenInfo = frozenIns[address(msg.sender)][token];
     	if (now > frozenInfo.time) {
     		frozenInfo.amount = 0;
     	}
+
+        // ptoken balance 
     	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
+        // underlying asset balance
+        uint256 tokenBalance;
     	if (token != address(0x0)) {
+            // Underlying asset conversion 18 decimals
     		tokenBalance = getDecimalConversion(token, ERC20(token).balanceOf(address(this)), pToken);
     	} else {
+            // The amount of ETH involved in the calculation does not include the transfer in this time
     		require(msg.value == amount, "Log:InsurancePool:!msg.value");
     		tokenBalance = address(this).balance.sub(amount);
     	}
-    	uint256 insAmount = getDecimalConversion(token, amount, pToken);
+
+        // Calculate LP
+    	uint256 insAmount = 0;
     	uint256 insTotal = totalSupply[token];
+        // Insurance pool assets must be greater than 0
         uint256 allBalance = tokenBalance.add(pTokenBalance);
         require(allBalance > insNegative[token], "Log:InsurancePool:allBalanceNotEnough");
     	if (insTotal != 0) {
             uint256 allValue = allBalance.sub(insNegative[token]);
     		insAmount = getDecimalConversion(token, amount, pToken).mul(insTotal).div(allValue);
-    	}
-    	// 转入标的资产
+    	} else {
+            // The initial net value is 1
+            insAmount = getDecimalConversion(token, amount, pToken);
+        }
+
+    	// Transfer to the underlying asset(ERC20)
     	if (token != address(0x0)) {
     		require(msg.value == 0, "Log:InsurancePool:msg.value!=0");
     		ERC20(token).safeTransferFrom(address(msg.sender), address(this), amount);
     	}
-    	// 增发份额
+
+    	// Additional LP issuance
     	issuance(token, insAmount, address(msg.sender));
-    	// 冻结保险份额
+
+    	// Freeze insurance LP
     	frozenInfo.amount = frozenInfo.amount.add(insAmount);
     	frozenInfo.time = latestTime[token].add(waitCycle);
     }
 
-    // 赎回保险
-    // token:标的资产地址，USDT、ETH...
-    // amount:赎回份额
+    /// @dev Redemption insurance
+    /// @param token underlying asset address
+    /// @param amount redemption LP
     function redemptionIns(address token, 
     	                   uint256 amount) public noStop nonReentrant {
+        // amount > 0
         require(amount > 0, "Log:InsurancePool:!amount");
-        uint256 tokenBalance;
+        
+        // Verify ptoken
         address pToken = mortgagePool.getUnderlyingToPToken(token);
+        require(pToken != address(0x0), "Log:InsurancePool:!pToken");
+
+        // Update redemption time
     	updateLatestTime(token);
+
+        // Judging the redemption time
         uint256 tokenTime = latestTime[token];
     	require(now >= tokenTime.sub(waitCycle) && now <= tokenTime.sub(waitCycle).add(redemptionCycle), "Log:InsurancePool:!time");
+
+        // Thaw LP
     	Frozen storage frozenInfo = frozenIns[address(msg.sender)][token];
     	if (now > frozenInfo.time) {
     		frozenInfo.amount = 0;
     	}
-    	require(pToken != address(0x0), "Log:InsurancePool:!pToken");
+    	
+        // ptoken balance 
     	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
+        // underlying asset balance
+        uint256 tokenBalance;
     	if (token != address(0x0)) {
     		tokenBalance = getDecimalConversion(token, ERC20(token).balanceOf(address(this)), pToken);
     	} else {
     		tokenBalance = address(this).balance;
     	}
+
+        // Insurance pool assets must be greater than 0
         uint256 allBalance = tokenBalance.add(pTokenBalance);
-        require(insNegative[token] < allBalance, "Log:InsurancePool:allBalanceNotEnough");
+        require(allBalance > insNegative[token], "Log:InsurancePool:allBalanceNotEnough");
+        // Calculated amount of assets
     	uint256 allValue = allBalance.sub(insNegative[token]);
     	uint256 insTotal = totalSupply[token];
     	uint256 underlyingAmount = amount.mul(allValue).div(insTotal);
 
-        // 销毁份额
+        // Destroy LP
         destroy(token, amount, address(msg.sender));
+        // Judgment to freeze LP
         require(balances[address(msg.sender)][token] >= frozenInfo.amount, "Log:InsurancePool:frozen");
     	
-    	// 转出标的资产
+    	// Transfer out assets, priority transfer of the underlying assets, if the underlying assets are insufficient, transfer ptoken
     	if (token != address(0x0)) {
+            // ERC20
             if (tokenBalance >= underlyingAmount) {
                 ERC20(token).safeTransfer(address(msg.sender), getDecimalConversion(pToken, underlyingAmount, token));
             } else {
@@ -358,6 +452,7 @@ contract InsurancePool is ReentrancyGuard {
                 ERC20(pToken).safeTransfer(address(msg.sender), underlyingAmount.sub(tokenBalance));
             }
     	} else {
+            // ETH
             if (tokenBalance >= underlyingAmount) {
                 TransferHelper.safeTransferETH(address(msg.sender), underlyingAmount);
             } else {
@@ -368,10 +463,10 @@ contract InsurancePool is ReentrancyGuard {
     	}
     }
 
-    // 销毁P资产，更新负账户
-    // pToken:p资产地址
-    // amount:销毁数量
-    // token:标的资产地址
+    /// @dev Destroy ptoken, update negative ledger
+    /// @param pToken ptoken address
+    /// @param amount quantity destroyed
+    /// @param token underlying asset address
     function destroyPToken(address pToken, 
     	                   uint256 amount,
                            address token) public onlyMortgagePool {
@@ -388,9 +483,9 @@ contract InsurancePool is ReentrancyGuard {
     	}
     }
 
-    // 消除负账户
-    // pToken:p资产地址
-    // token:标的资产地址
+    /// @dev Eliminate negative ledger
+    /// @param pToken ptoken address
+    /// @param token underlying asset address
     function eliminate(address pToken, 
                        address token) public onlyMortgagePool {
     	_eliminate(pToken, token);
@@ -398,15 +493,20 @@ contract InsurancePool is ReentrancyGuard {
 
     function _eliminate(address pToken, 
                         address token) private {
+
     	PToken pErc20 = PToken(pToken);
+        // negative ledger
     	uint256 negative = insNegative[token];
+        // ptoken balance
     	uint256 pTokenBalance = pErc20.balanceOf(address(this)); 
     	if (negative > 0 && pTokenBalance > 0) {
     		if (negative >= pTokenBalance) {
+                // Increase negative ledger
                 pErc20.destroy(pTokenBalance, address(this));
     			insNegative[token] = insNegative[token].sub(pTokenBalance);
                 emit Negative(pToken, pTokenBalance, insNegative[token]);
     		} else {
+                // negative ledger = 0
                 pErc20.destroy(negative, address(this));
     			insNegative[token] = 0;
                 emit Negative(pToken, insNegative[token], insNegative[token]);
@@ -414,7 +514,8 @@ contract InsurancePool is ReentrancyGuard {
     	}
     }
 
-    // 更新赎回节点
+    /// @dev Update redemption time
+    /// @param token underlying asset address
     function updateLatestTime(address token) public {
         uint256 time = latestTime[token];
     	if (now > time) {
@@ -423,10 +524,10 @@ contract InsurancePool is ReentrancyGuard {
     	}
     }
 
-    // 销毁份额
-    // token:标的资产地址
-    // amount:销毁数量数量
-    // account:销毁用户地址
+    /// @dev Destroy LP
+    /// @param token underlying asset address
+    /// @param amount quantity destroyed
+    /// @param account destroy address
     function destroy(address token, 
                      uint256 amount, 
                      address account) private {
@@ -436,10 +537,10 @@ contract InsurancePool is ReentrancyGuard {
         emit Destroy(token, amount, account);
     }
 
-    // 增发份额
-    // token:标的资产地址
-    // amount:增发数量
-    // account:增发用户地址
+    /// @dev Additional LP issuance
+    /// @param token underlying asset address
+    /// @param amount additional issuance quantity
+    /// @param account additional issuance address
     function issuance(address token, 
                       uint256 amount, 
                       address account) private {
