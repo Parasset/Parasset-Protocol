@@ -179,11 +179,11 @@ exports.setMaxRate = async function (mortgagePool, MToken, rate) {
 }
 
 // 设置k值
-exports.setK = async function (mortgagePool, MToken, num) {
+exports.setLiquidationLine = async function (mortgagePool, MToken, num) {
     const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-    const line = await pool.setK(MToken, num);
+    const line = await pool.setLiquidationLine(MToken, num);
     await line.wait(1);
-    console.log(`>>> [setLine SUCCESS]`);
+    console.log(`>>> [setLiquidationLine SUCCESS]`);
 }
 
 // 设置可操作ptoken地址
@@ -316,8 +316,7 @@ exports.getLedger = async function (mortgagePool, PToken, MToken, owner) {
     console.log(`>>>> 最近操作区块号:${ledger[2].toString()}`);
     console.log(`>>>> 抵押率:${ledger[3].toString()}`);
     console.log(`>>>> 是否创建:${ledger[4].toString()}`);
-    console.log(`>>>> 清算线:${ledger[5].toString()}`);
-    return [ledger[0], ledger[1], ledger[2], ledger[3], ledger[4], ledger[5]];
+    return [ledger[0], ledger[1], ledger[2], ledger[3], ledger[4]];
 }
 
 // 查看实时数据

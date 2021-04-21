@@ -5,17 +5,16 @@ import "./PToken.sol";
 
 contract PTokenFactory {
 
-	// 管理员地址
+	// Governance address
 	address public governance;
-	// 可操作PToken地址
+	// contract address => bool, ptoken operation permissions
 	mapping(address=>bool) allowAddress;
-	// P资产地址
+	// ptoken address => bool, ptoken verification
 	mapping(address=>bool) pTokenMapping;
+    // ptoken list
 	address[] pTokenList;
 
-	// p资产地址
     event createLog(address pTokenAddress);
-    // 可操作PToken地址
     event pTokenOperator(address contractAddress, bool allow);
 
 	constructor () public {
@@ -46,51 +45,63 @@ contract PTokenFactory {
         return string(ret);
     }
 
-    // 查看管理员地址
+    /// @dev View governance address
+    /// @return governance address
     function getGovernance() public view returns(address) {
         return governance;
     }
 
-    // 查询可操作PToken地址
+    /// @dev View ptoken operation permissions
+    /// @param contractAddress contract address
+    /// @return bool
     function getPTokenOperator(address contractAddress) public view returns(bool) {
     	return allowAddress[contractAddress];
     }
 
-    // 查询是否真实P资产
+    /// @dev View ptoken operation permissions
+    /// @param pToken ptoken verification
+    /// @return bool
     function getPTokenAuthenticity(address pToken) public view returns(bool) {
     	return pTokenMapping[pToken];
     }
 
-    // 查询p资产数量
+    /// @dev View ptoken list length
+    /// @return ptoken list length
     function getPTokenNum() public view returns(uint256) {
     	return pTokenList.length;
     }
 
-    // 查询p资产地址
+    /// @dev View ptoken address
+    /// @param index array subscript
+    /// @return ptoken address
     function getPTokenAddress(uint256 index) public view returns(address) {
     	return pTokenList[index];
     }
 
     //---------governance----------
 
-    // 设置管理员
+    /// @dev Set governance address
+    /// @param add new governance address
     function setGovernance(address add) public onlyGovernance {
     	require(add != address(0x0), "Log:PTokenFactory:0x0");
     	governance = add;
     }
 
-    // 创建PToken
+    /// @dev Set governance address
+    /// @param contractAddress contract address
+    /// @param allow bool
+    function setPTokenOperator(address contractAddress, 
+                               bool allow) public onlyGovernance {
+        allowAddress[contractAddress] = allow;
+        emit pTokenOperator(contractAddress, allow);
+    }
+
+    /// @dev Create PToken
+    /// @param name token name
     function createPtoken(string memory name) public onlyGovernance {
     	PToken pToken = new PToken(strConcat("PToken_", name), strConcat("P", name));
     	pTokenMapping[address(pToken)] = true;
     	pTokenList.push(address(pToken));
     	emit createLog(address(pToken));
-    }
-
-    // 设置可操作PToken地址
-    function setPTokenOperator(address contractAddress, 
-                               bool allow) public onlyGovernance {
-    	allowAddress[contractAddress] = allow;
-    	emit pTokenOperator(contractAddress, allow);
     }
 }

@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 // 部署
 const {deployUSDT,deployNEST,deployNestQuery,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
 // 设置
-const {setInsurancePool,setMortgagePool,setAvg,setMaxRate,setK,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow} = require("./normal-scripts.js")
+const {setInsurancePool,setMortgagePool,setAvg,setMaxRate,setLiquidationLine,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow} = require("./normal-scripts.js")
 // 交互
 const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoinage,reducedCoinage,exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns} = require("./normal-scripts.js")
 // 查询
@@ -49,9 +49,9 @@ async function main() {
 	// 设置抵押率-NEST
 	await setMaxRate(pool.address, NESTContract.address, "40");
 	// 设置平仓线-ETH
-	await setK(pool.address, ETHAddress, "1250");
+	await setLiquidationLine(pool.address, ETHAddress, "84");
 	// 设置平仓线-NEST
-	await setK(pool.address, NESTContract.address, "1333");
+	await setLiquidationLine(pool.address, NESTContract.address, "75");
 	// 设置价格合约
 	await setPriceController(pool.address,PriceController.address);
 	// 设置标的资产与p资产映射
