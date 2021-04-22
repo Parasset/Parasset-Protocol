@@ -74,7 +74,7 @@ contract InsurancePool is ReentrancyGuard {
         _;
     }
 
-    modifier noStop() {
+    modifier redemptionOnly() {
         require(flag != 0, "Log:InsurancePool:!0");
         _;
     }
@@ -398,7 +398,7 @@ contract InsurancePool is ReentrancyGuard {
     /// @param token underlying asset address
     /// @param amount redemption LP
     function redemptionIns(address token, 
-    	                   uint256 amount) public noStop nonReentrant {
+    	                   uint256 amount) public redemptionOnly nonReentrant {
         // amount > 0
         require(amount > 0, "Log:InsurancePool:!amount");
         
@@ -419,7 +419,7 @@ contract InsurancePool is ReentrancyGuard {
     		frozenInfo.amount = 0;
     	}
     	
-        // ptoken balance 
+        // ptoken balance
     	uint256 pTokenBalance = ERC20(pToken).balanceOf(address(this));
         // underlying asset balance
         uint256 tokenBalance;

@@ -45,6 +45,7 @@ contract MortgagePool is ReentrancyGuard {
     // Status
     uint8 public flag;      // = 0: pause
                             // = 1: active
+                            // = 2: out only
 
 	struct PersonalLedger {
         uint256 mortgageAssets;         // Amount of mortgaged assets
@@ -73,6 +74,11 @@ contract MortgagePool is ReentrancyGuard {
 
     modifier whenActive() {
         require(flag == 1, "Log:MortgagePool:!active");
+        _;
+    }
+
+    modifier outOnly() {
+        require(flag != 0, "Log:MortgagePool:!0");
         _;
     }
 
@@ -270,7 +276,7 @@ contract MortgagePool is ReentrancyGuard {
     //---------governance----------
 
     /// @dev Set contract status
-    /// @param num 0: pause, 1: active
+    /// @param num 0: pause, 1: active, 2: out only
     function setFlag(uint8 num) public onlyGovernance {
         flag = num;
     }
@@ -409,7 +415,7 @@ contract MortgagePool is ReentrancyGuard {
     /// @param amount amount of mortgaged assets
     function supplement(address mortgageToken, 
                         address pToken, 
-                        uint256 amount) public payable whenActive {
+                        uint256 amount) public payable outOnly nonReentrant {
 
     	require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
         require(amount > 0, "Log:MortgagePool:!amount");
@@ -453,13 +459,13 @@ contract MortgagePool is ReentrancyGuard {
     /// @param amount amount of mortgaged assets
     function decrease(address mortgageToken, 
                       address pToken, 
-                      uint256 amount) public payable whenActive nonReentrant {
+                      uint256 amount) public payable outOnly nonReentrant {
 
     	require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
-        require(amount > 0, "Log:MortgagePool:!amount");
     	PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
         uint256 parassetAssets = pLedger.parassetAssets;
         uint256 mortgageAssets = pLedger.mortgageAssets;
+        require(amount > 0 && amount <= mortgageAssets, "Log:MortgagePool:!amount");
         require(pLedger.created, "Log:MortgagePool:!created");
 
     	// Get the price
@@ -541,7 +547,7 @@ contract MortgagePool is ReentrancyGuard {
     /// @param amount amount of debt
     function reducedCoinage(address mortgageToken,
                             address pToken,
-                            uint256 amount) public payable whenActive nonReentrant {
+                            uint256 amount) public payable outOnly nonReentrant {
 
         require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
         PersonalLedger storage pLedger = ledger[pToken][mortgageToken][address(msg.sender)];
@@ -583,7 +589,7 @@ contract MortgagePool is ReentrancyGuard {
     function liquidation(address mortgageToken, 
                          address pToken,
                          address account,
-                         uint256 amount) public payable whenActive nonReentrant {
+                         uint256 amount) public payable outOnly nonReentrant {
 
     	require(mortgageAllow[pToken][mortgageToken], "Log:MortgagePool:!mortgageAllow");
     	PersonalLedger storage pLedger = ledger[pToken][mortgageToken][account];
