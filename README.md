@@ -1,3 +1,11 @@
+# Parasset
+使用去中心化的链上原生资产，如ETH、NToken，用于生成平行的资产。
+
+![](https://img.shields.io/github/issues/Parasset/Parasset-Protocol)
+![](https://img.shields.io/github/stars/Parasset/Parasset-Protocol)
+![](https://img.shields.io/github/license/Parasset/Parasset-Protocol)
+![](https://img.shields.io/twitter/url?url=https%3A%2F%2Fgithub.com%2FParasset%2FParasset-Protocol%2F)
+
 ![image](https://github.com/Parasset/Doc/blob/main/Parasset_Smart_Contracts2.png)
 
 ## 安装
