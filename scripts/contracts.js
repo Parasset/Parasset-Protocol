@@ -1,17 +1,3 @@
-// module.exports =
-// {
-//     network: "ropsten",
-//     NestContract: "0xd791228a2eeb931739A5faC4a41af55fA194E08E",
-//     USDTContract: "0x955702776C7624f3EF4B49d6900946ED4f403d9A",
-//     PTokenFactory: "0xe635F9d3e3EFE67Ad42898F38d2E373270CD58c3",
-//     MortgagePool: "0x3048bC3cd8dbCE68c7b4E6D5E0c117bD2885322D",
-//     InsurancePool: "0xe0bc8c4f65f08ab71437bdA1f261d9E6A96A6F66",
-//     PriceController: "0x32ED66917687131f3852Fc64A638b8e8D9f3b5aa",
-//     NestQuery: "0xbF6dBeF11649fa1b55f850fd003ff4c3B4E5C025",
-//     PUSDT: "0xffaa58c0bc5069E19FcCa94aDb70EA63578F9860",
-//     PETH: "0x64B100bDA18c2A5AF4A370547adaB2712Dcf41dD"
-// }
-
 module.exports =
 {
     network: "rinkeby",

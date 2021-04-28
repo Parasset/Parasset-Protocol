@@ -69,6 +69,11 @@ contract InsurancePool is ReentrancyGuard {
         _;
     }
 
+    modifier onlyGovOrMor() {
+        require(msg.sender == governance || msg.sender == address(mortgagePool), "Log:InsurancePool:!onlyGovOrMor");
+        _;
+    }
+
     modifier whenActive() {
         require(flag == 1, "Log:InsurancePool:!active");
         _;
@@ -233,7 +238,7 @@ contract InsurancePool is ReentrancyGuard {
     }
 
     /// @dev Set the latest redemption time
-    function setLatestTime(address token) public onlyMortgagePool {
+    function setLatestTime(address token) public onlyGovOrMor {
         latestTime[token] = now.add(waitCycle);
     }
 

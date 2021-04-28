@@ -252,9 +252,9 @@ exports.redemptionAll = async function(mortgagePool, MToken, PToken) {
 }
 
 // 清算
-exports.liquidation = async function(mortgagePool, MToken, PToken, account, valueNum) {
+exports.liquidation = async function(mortgagePool, MToken, PToken, account, amount, valueNum) {
 	const pool = await ethers.getContractAt("MortgagePool", mortgagePool);
-	const supplement = await pool.liquidation(MToken, PToken, account, {value:valueNum});
+	const supplement = await pool.liquidation(MToken, PToken, account, amount, {value:valueNum});
 	console.log(`>>> [liquidation SUCCESS]`);
 }
 

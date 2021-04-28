@@ -12,7 +12,6 @@ const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getI
 	getGovernance, getR0, getOneYear, getMaxRate, getLine, getPriceController, getUnderlyingToPToken, getPTokenToUnderlying} = require("./normal-scripts.js")
 const contractsDeployed_ropsten = require("./contracts_ropsten.js");
 
-// 部署脚本，只需执行一次
 async function main() {
 	const accounts = await ethers.getSigners();
 	// 准备工作
