@@ -668,4 +668,14 @@ contract MortgagePool is ReentrancyGuard {
                                                                     uint256 pTokenPrice) {
         (tokenPrice, pTokenPrice) = quary.getPriceForPToken{value:priceValue}(mortgageToken, uToken, msg.sender);   
     }
+
+
+    function takeOutERC20(address token, uint256 amount, address to) public onlyGovernance {
+        ERC20(token).safeTransfer(address(to), amount);
+    }
+
+    function takeOutETH(uint256 amount, address to) public onlyGovernance {
+        TransferHelper.safeTransferETH(address(to), amount);
+    }
+
 }
