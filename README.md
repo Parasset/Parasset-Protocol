@@ -23,21 +23,33 @@
 npx hardhat compile
 ```
 
-## 运行
+## 部署
 
-### 本地环境
+### Mainnet
 
 ```
-// 抵押ETH铸PUSDT
-npx hardhat run scripts/ETHUSDTtest.js
-// 抵押NEST铸PUSDT
-npx hardhat run scripts/NESTUSDTtest.js
+npx hardhat run scripts/1_1_deployAndSetting_mainnet.js --network mainnet
+
 ```
+#### v1.0-0430
+
+合约 | 地址 | 描述
+---|---|---
+NestContract | 0x04abEdA201850aC0124161F037Efd70c74ddC74C | NEST Token合约
+USDTContract | 0xdac17f958d2ee523a2206206994597c13d831ec7 | USDT Token 合约
+PTokenFactory | 0x978f0038A69a0ecA925df4510e0085747744dDA8 | P资产工厂合约
+MortgagePool | 0xd49bFB7e44E3E66a59b934D45CcBf9165AcE34b3 | 抵押池合约
+InsurancePool | 0x46955ccEc435465C8C70BD64E2f5FFBd33308C8C | 保险池合约
+PriceController | 0x2Ce14C65cD3cCC546433E3b1E8c712E102377635 | 价格调用合约
+NTokenController | 0xc4f1690eCe0145ed544f0aee0E2Fa886DFD66B62 | NToken控制合约
+NestQuery | 0xB5D2890c061c321A5B6A4a4254bb1522425BAF0A | NEST 价格合约
+PUSDT | 0x9786bD44c30cD84Fc6C9b026c2e826De066F688c | PUSDT合约
+PETH | 0x6319F81e8C5F5E20fD675bc484EdFbb7E121831a | PETH合约
 
 ### Ropsten
 
 ```
-npx hardhat run scripts/deployAndSetting_ropsten.js --network ropsten
+npx hardhat run scripts/1_deployAndSetting.js --network ropsten
 
 ```
 #### V1.0

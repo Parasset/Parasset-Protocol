@@ -15,10 +15,10 @@ async function main() {
 	const accounts = await ethers.getSigners();
 	// 准备工作
 	const ETHAddress = "0x0000000000000000000000000000000000000000";
-	const NTokenControllerAdd = "0x0000000000000000000000000000000000000001";
-	const USDTContractAdd = "0x0000000000000000000000000000000000000001";
-	const NESTContractAdd = "0x0000000000000000000000000000000000000001";
-	const NestQueryAdd = "0x0000000000000000000000000000000000000001";
+	const NTokenControllerAdd = "0xc4f1690eCe0145ed544f0aee0E2Fa886DFD66B62";
+	const USDTContractAdd = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+	const NESTContractAdd = "0x04abEdA201850aC0124161F037Efd70c74ddC74C";
+	const NestQueryAdd = "0xB5D2890c061c321A5B6A4a4254bb1522425BAF0A";
 	// 部署工厂合约
 	factory = await depolyFactory();
 	// 部署抵押池合约
@@ -27,6 +27,17 @@ async function main() {
 	PriceController = await deployPriceController(NestQueryAdd, NTokenControllerAdd);
 	// 部署保险池合约
 	insurancePool = await deployInsurancePool(factory.address);
+
+	// // 部署工厂合约
+	// factory = await ethers.getContractAt("PTokenFactory", "0x978f0038A69a0ecA925df4510e0085747744dDA8");
+	// // 部署抵押池合约
+	// pool = await ethers.getContractAt("MortgagePool", "0xd49bFB7e44E3E66a59b934D45CcBf9165AcE34b3");
+	// // 部署获取价格合约
+	// PriceController = await ethers.getContractAt("PriceController", "0x2Ce14C65cD3cCC546433E3b1E8c712E102377635");
+	// // 部署保险池合约
+	// insurancePool = await deployInsurancePool(factory.address);
+
+
 	// 设置保险池合约
 	await setInsurancePool(pool.address, insurancePool.address);
 	// 设置抵押池合约
