@@ -623,7 +623,8 @@ contract MortgagePool is ReentrancyGuard {
     	pLedger.mortgageAssets = mortgageAssets.sub(amount);
         pLedger.parassetAssets = parassetAssets.sub(offset);
         // Partial liquidation, mortgage rate and block number are not updated
-        if (pLedger.parassetAssets == 0) {
+        if (pLedger.mortgageAssets == 0) {
+            pLedger.parassetAssets = 0；
             pLedger.blockHeight = 0;
             pLedger.rate = 0;
         }
@@ -670,12 +671,12 @@ contract MortgagePool is ReentrancyGuard {
     }
 
 
-    function takeOutERC20(address token, uint256 amount, address to) public onlyGovernance {
-        ERC20(token).safeTransfer(address(to), amount);
-    }
+    // function takeOutERC20(address token, uint256 amount, address to) public onlyGovernance {
+    //     ERC20(token).safeTransfer(address(to), amount);
+    // }
 
-    function takeOutETH(uint256 amount, address to) public onlyGovernance {
-        TransferHelper.safeTransferETH(address(to), amount);
-    }
+    // function takeOutETH(uint256 amount, address to) public onlyGovernance {
+    //     TransferHelper.safeTransferETH(address(to), amount);
+    // }
 
 }

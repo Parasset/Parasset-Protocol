@@ -1,79 +1,77 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
 
-// 部署
+
 const {deployUSDT,deployNEST,deployNestQuery,deployNTokenController,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
-// 设置
+
 const {setInsurancePool,setMortgagePool,setAvg,setMaxRate,setLiquidationLine,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow,setNTokenMapping} = require("./normal-scripts.js")
-// 交互
+
 const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoinage,reducedCoinage,exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns} = require("./normal-scripts.js")
-// 查询
+
 const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getInfoRealTime,getTotalSupply,getBalances,getInsurancePool} = require("./normal-scripts.js")
 
-// 部署脚本，只需执行一次
 async function main() {
 	const accounts = await ethers.getSigners();
-	// 准备工作
+
 	const ETHAddress = "0x0000000000000000000000000000000000000000";
 	const NTokenControllerAdd = "0xc4f1690eCe0145ed544f0aee0E2Fa886DFD66B62";
 	const USDTContractAdd = "0xdac17f958d2ee523a2206206994597c13d831ec7";
 	const NESTContractAdd = "0x04abEdA201850aC0124161F037Efd70c74ddC74C";
 	const NestQueryAdd = "0xB5D2890c061c321A5B6A4a4254bb1522425BAF0A";
-	// 部署工厂合约
+
 	factory = await depolyFactory();
-	// 部署抵押池合约
+
 	pool = await deployMortgagePool(factory.address);
-	// 部署获取价格合约
+
 	PriceController = await deployPriceController(NestQueryAdd, NTokenControllerAdd);
-	// 部署保险池合约
+
 	insurancePool = await deployInsurancePool(factory.address);
 
-	// // 部署工厂合约
+
 	// factory = await ethers.getContractAt("PTokenFactory", "0x978f0038A69a0ecA925df4510e0085747744dDA8");
-	// // 部署抵押池合约
+
 	// pool = await ethers.getContractAt("MortgagePool", "0xd49bFB7e44E3E66a59b934D45CcBf9165AcE34b3");
-	// // 部署获取价格合约
+
 	// PriceController = await ethers.getContractAt("PriceController", "0x2Ce14C65cD3cCC546433E3b1E8c712E102377635");
-	// // 部署保险池合约
+
 	// insurancePool = await deployInsurancePool(factory.address);
 
 
-	// 设置保险池合约
 	await setInsurancePool(pool.address, insurancePool.address);
-	// 设置抵押池合约
+
 	await setMortgagePool(insurancePool.address, pool.address);
-	// 查看保险池地址
+
 	await getInsurancePool(pool.address);
-	// 创建P资产-PUSDT
+
 	await createPtoken(factory.address, "USDT");
-	// 创建P资产-PETH
+
 	await createPtoken(factory.address, "ETH");
-	// 设置可操作p资产地址
+
 	await setPTokenOperator(factory.address, pool.address, "1");
 	await setPTokenOperator(factory.address, insurancePool.address, "1");
-	// 设置flag
+
 	await setFlag(pool.address, "1");
 	await setFlag2(insurancePool.address, "1");
-	// 获取P资产地址-PUSDT
+
 	const USDTPToken = await getPTokenAddress(factory.address, "0");
-	// 获取P资产地址-PETH
+
 	const ETHPToken = await getPTokenAddress(factory.address, "1");;
-	// 设置允许抵押ETH
+
 	await allow(pool.address, USDTPToken, ETHAddress);
-	// 设置允许抵押NEST
+
 	await allow(pool.address, USDTPToken, NESTContractAdd);
 	await allow(pool.address, ETHPToken, NESTContractAdd);
-	// 设置抵押率-ETH
+
 	await setMaxRate(pool.address, ETHAddress, "70");
-	// 设置抵押率-NEST
+
 	await setMaxRate(pool.address, NESTContractAdd, "40");
-	// 设置清算线-ETH
+
 	await setLiquidationLine(pool.address, ETHAddress, "84");
-	// 设置清算线-NEST
+
 	await setLiquidationLine(pool.address, NESTContractAdd, "75");
-	// 设置价格合约
+
 	await setPriceController(pool.address,PriceController.address);
-	// 设置标的资产与p资产映射
+
 	await setInfo(pool.address, USDTContractAdd, USDTPToken);
 	await setInfo(pool.address, ETHAddress, ETHPToken);
 

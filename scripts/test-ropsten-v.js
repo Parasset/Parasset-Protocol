@@ -1,20 +1,20 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
 
-// 部署
+
 const {deployUSDT,deployNEST,deployNestQuery,deployPriceController,deployInsurancePool,depolyFactory,deployMortgagePool} = require("./normal-scripts.js")
-// 设置
+
 const {setInsurancePool,setMortgagePool,setPrice,setMaxRate,setLine,setPriceController,setPTokenOperator,setFlag,setFlag2,setInfo,allow} = require("./normal-scripts.js")
-// 交互
+
 const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoinage,reducedCoinage,exchangePTokenToUnderlying,exchangeUnderlyingToPToken,transfer,subscribeIns,redemptionIns} = require("./normal-scripts.js")
-// 查询
+
 const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getInfoRealTime,getTotalSupply,getBalances,getInsurancePool,
 	getGovernance, getR0, getOneYear, getMaxRate, getLine, getPriceController, getUnderlyingToPToken, getPTokenToUnderlying} = require("./normal-scripts.js")
 const contractsDeployed_ropsten = require("./contracts_ropsten.js");
 
 async function main() {
 	const accounts = await ethers.getSigners();
-	// 准备工作
+
 	const ETHAddress = "0x0000000000000000000000000000000000000000";
 	USDTContract = await await ethers.getContractAt("USDT", contractsDeployed_ropsten.USDTContract);
 	NESTContract = await ethers.getContractAt("USDT", contractsDeployed_ropsten.NestContract);
