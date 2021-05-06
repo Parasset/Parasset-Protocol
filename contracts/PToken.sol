@@ -26,8 +26,12 @@ contract PToken is IParasset {
 
     //---------modifier---------
 
-    modifier onlyPool()
-    {
+    modifier onlyGovernance() {
+        require(address(msg.sender) == pTokenFactory.getGovernance(), "Log:PToken:!governance");
+        _;
+    }
+
+    modifier onlyPool() {
     	require(pTokenFactory.getPTokenOperator(address(msg.sender)), "Log:PToken:!Pool");
     	_;
     }
@@ -52,12 +56,15 @@ contract PToken is IParasset {
         return _balances[owner];
     }
 
-    function allowance(address owner, address spender) override public view returns (uint256) 
-    {
+    function allowance(address owner, address spender) override public view returns (uint256) {
         return _allowed[owner][spender];
     }
 
     //---------transaction---------
+
+    function changeFactory(address factory) public onlyGovernance {
+        pTokenFactory = IPTokenFactory(address(factory));
+    }
 
     function transfer(address to, uint256 value) override public returns (bool) 
     {

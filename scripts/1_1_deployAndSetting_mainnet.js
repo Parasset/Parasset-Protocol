@@ -10,27 +10,32 @@ const {approve,createPtoken,coin,supplement,redemptionAll,decrease,increaseCoina
 
 const {USDT,ETH,getPTokenAddress,getTokenInfo,getLedger,getFee,ERC20Balance,getInfoRealTime,getTotalSupply,getBalances,getInsurancePool} = require("./normal-scripts.js")
 
-
 async function main() {
 	const accounts = await ethers.getSigners();
 
 	const ETHAddress = "0x0000000000000000000000000000000000000000";
-
-	USDTContract = await deployUSDT();
-
-	NESTContract = await deployNEST();
+	const NTokenControllerAdd = "0xc4f1690eCe0145ed544f0aee0E2Fa886DFD66B62";
+	const USDTContractAdd = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+	const NESTContractAdd = "0x04abEdA201850aC0124161F037Efd70c74ddC74C";
+	const NestQueryAdd = "0xB5D2890c061c321A5B6A4a4254bb1522425BAF0A";
 
 	factory = await depolyFactory();
 
 	pool = await deployMortgagePool(factory.address);
 
-	NestQuery = await deployNestQuery();
-
-	NTokenController = await deployNTokenController();
-
-	PriceController = await deployPriceController(NestQuery.address, NTokenController.address);
+	PriceController = await deployPriceController(NestQueryAdd, NTokenControllerAdd);
 
 	insurancePool = await deployInsurancePool(factory.address);
+
+
+	// factory = await ethers.getContractAt("PTokenFactory", "0x978f0038A69a0ecA925df4510e0085747744dDA8");
+
+	// pool = await ethers.getContractAt("MortgagePool", "0xd49bFB7e44E3E66a59b934D45CcBf9165AcE34b3");
+
+	// PriceController = await ethers.getContractAt("PriceController", "0x2Ce14C65cD3cCC546433E3b1E8c712E102377635");
+
+	// insurancePool = await deployInsurancePool(factory.address);
+
 
 	await setInsurancePool(pool.address, insurancePool.address);
 
@@ -50,40 +55,35 @@ async function main() {
 
 	const USDTPToken = await getPTokenAddress(factory.address, "0");
 
-	const ETHPToken = await await getPTokenAddress(factory.address, "1");;
+	const ETHPToken = await getPTokenAddress(factory.address, "1");;
 
 	await allow(pool.address, USDTPToken, ETHAddress);
 
-	await allow(pool.address, USDTPToken, NESTContract.address);
-	await allow(pool.address, ETHPToken, NESTContract.address);
+	await allow(pool.address, USDTPToken, NESTContractAdd);
+	await allow(pool.address, ETHPToken, NESTContractAdd);
 
 	await setMaxRate(pool.address, ETHAddress, "70");
 
-	await setMaxRate(pool.address, NESTContract.address, "40");
+	await setMaxRate(pool.address, NESTContractAdd, "40");
 
 	await setLiquidationLine(pool.address, ETHAddress, "84");
 
-	await setLiquidationLine(pool.address, NESTContract.address, "75");
-
-	await setAvg(NestQuery.address,USDTContract.address, USDT("2"));
-
-	await setAvg(NestQuery.address,NESTContract.address, ETH("3"));
+	await setLiquidationLine(pool.address, NESTContractAdd, "75");
 
 	await setPriceController(pool.address,PriceController.address);
 
-	await setInfo(pool.address, USDTContract.address, USDTPToken);
+	await setInfo(pool.address, USDTContractAdd, USDTPToken);
 	await setInfo(pool.address, ETHAddress, ETHPToken);
-	await setNTokenMapping(NTokenController.address, NestQuery.address, USDTContract.address, NESTContract.address);
 
 	console.log("network:ropsten");
-	console.log(`NestContract:${NESTContract.address}`);
-	console.log(`USDTContract:${USDTContract.address}`);
+	console.log(`NestContract:${NESTContractAdd}`);
+	console.log(`USDTContract:${USDTContractAdd}`);
 	console.log(`PTokenFactory:${factory.address}`);
 	console.log(`MortgagePool:${pool.address}`);
 	console.log(`InsurancePool:${insurancePool.address}`);
 	console.log(`PriceController:${PriceController.address}`);
-	console.log(`NTokenController:${NTokenController.address}`);
-	console.log(`NestQuery:${NestQuery.address}`);
+	console.log(`NTokenController:${NTokenControllerAdd}`);
+	console.log(`NestQuery:${NestQueryAdd}`);
 	console.log(`PUSDT:${USDTPToken}`);
 	console.log(`PETH:${ETHPToken}`);
 }

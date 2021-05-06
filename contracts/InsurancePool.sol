@@ -553,4 +553,12 @@ contract InsurancePool is ReentrancyGuard {
         totalSupply[token] = totalSupply[token].add(amount);
         emit Issuance(token, amount, account);
     }
+
+    // function takeOutERC20(address token, uint256 amount, address to) public onlyGovernance {
+    //     ERC20(token).safeTransfer(address(to), amount);
+    // }
+
+    // function takeOutETH(uint256 amount, address to) public onlyGovernance {
+    //     TransferHelper.safeTransferETH(address(to), amount);
+    // }
 }
