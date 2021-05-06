@@ -1,5 +1,4 @@
 {
-    //  infura节点私钥
     "alchemy": {
         "ropsten": {
             "apiKey": "XXX"
@@ -8,7 +7,6 @@
             "apiKey": "XXX"
         }
     },
-    //  填写私钥
     "account": {
         "ropsten": {
             "key": "XXX",
