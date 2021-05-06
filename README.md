@@ -25,6 +25,27 @@ npx hardhat compile
 
 ## Run
 
+### Mainnet
+
+```
+npx hardhat run scripts/1_1_deployAndSetting_mainnet.js --network mainnet
+
+```
+#### 20210430
+
+Contract | Address | Description
+---|---|---
+NestContract | 0x04abEdA201850aC0124161F037Efd70c74ddC74C | NEST Token
+USDTContract | 0xdac17f958d2ee523a2206206994597c13d831ec7 | USDT Token
+PTokenFactory | 0x978f0038A69a0ecA925df4510e0085747744dDA8 | P Asset Factory Contract
+MortgagePool | 0xd49bFB7e44E3E66a59b934D45CcBf9165AcE34b3 | Mortgage pool contract
+InsurancePool | 0x46955ccEc435465C8C70BD64E2f5FFBd33308C8C | Insurance pool contract
+PriceController | 0x2Ce14C65cD3cCC546433E3b1E8c712E102377635 | Price call contract
+NTokenController | 0xc4f1690eCe0145ed544f0aee0E2Fa886DFD66B62 | NTokenController
+NestQuery | 0xB5D2890c061c321A5B6A4a4254bb1522425BAF0A | NEST Oracle
+PUSDT | 0x9786bD44c30cD84Fc6C9b026c2e826De066F688c | PUSDT
+PETH | 0x6319F81e8C5F5E20fD675bc484EdFbb7E121831a | PETH
+
 ### Ropsten
 
 ```
