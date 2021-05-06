@@ -622,9 +622,9 @@ contract MortgagePool is ReentrancyGuard {
     	// Update debt information
     	pLedger.mortgageAssets = mortgageAssets.sub(amount);
         pLedger.parassetAssets = parassetAssets.sub(offset);
-        // Partial liquidation, mortgage rate and block number are not updated
+        // MortgageAssets liquidation, mortgage rate and block number are not updated
         if (pLedger.mortgageAssets == 0) {
-            pLedger.parassetAssets = 0；
+            pLedger.parassetAssets = 0;
             pLedger.blockHeight = 0;
             pLedger.rate = 0;
         }

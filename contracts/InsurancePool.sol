@@ -374,10 +374,10 @@ contract InsurancePool is ReentrancyGuard {
         // Calculate LP
     	uint256 insAmount = 0;
     	uint256 insTotal = totalSupply[token];
-        // Insurance pool assets must be greater than 0
         uint256 allBalance = tokenBalance.add(pTokenBalance);
-        require(allBalance > insNegative[token], "Log:InsurancePool:allBalanceNotEnough");
     	if (insTotal != 0) {
+            // Insurance pool assets must be greater than 0
+            require(allBalance > insNegative[token], "Log:InsurancePool:allBalanceNotEnough");
             uint256 allValue = allBalance.sub(insNegative[token]);
     		insAmount = getDecimalConversion(token, amount, pToken).mul(insTotal).div(allValue);
     	} else {
