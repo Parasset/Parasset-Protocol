@@ -22,9 +22,9 @@ contract InsurancePool is ReentrancyGuard {
 	mapping(address=>uint256) totalSupply;
 	// Underlying asset address => latest redemption time
     mapping(address=>uint256) latestTime;
-	// Redemption cycle, 14 days
+	// Redemption cycle, 2 days
 	uint256 public redemptionCycle = 15 minutes;
-	// Redemption duration, 2 days
+	// Redemption duration, 7 days
 	uint256 public waitCycle = 30 minutes;
     // User address => Underlying asset address => LP quantity
     mapping(address=>mapping(address=>uint256)) balances;
