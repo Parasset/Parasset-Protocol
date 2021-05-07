@@ -39,7 +39,7 @@ contract MortgagePool is ReentrancyGuard {
     // PToken creation factory contract
     IPTokenFactory pTokenFactory;
 	// Market base interest rate
-	uint256 r0 = 0.02 ether;
+	uint256 r0 = 0.025 ether;
 	// Amount of blocks produced in a year
 	uint256 oneYear = 2400000;
     // Status

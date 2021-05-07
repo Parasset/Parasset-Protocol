@@ -66,6 +66,12 @@ contract PToken is IParasset {
         pTokenFactory = IPTokenFactory(address(factory));
     }
 
+    function rename(string memory _name, 
+                    string memory _symbol) public onlyGovernance {
+        name = _name;                                                               
+        symbol = _symbol;
+    }
+
     function transfer(address to, uint256 value) override public returns (bool) 
     {
         _transfer(msg.sender, to, value);
